@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/davibauer-coti-mcp-badge.png)](https://mseep.ai/app/davibauer-coti-mcp)
+
 # <img src="https://coti.io/favicon.ico" height="32"> COTI Blockchain MCP
 
 [![smithery badge](https://smithery.ai/badge/@davibauer/coti-mcp)](https://smithery.ai/server/@davibauer/coti-mcp)
