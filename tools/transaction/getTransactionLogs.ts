@@ -33,56 +33,114 @@ export function isGetTransactionLogsArgs(args: unknown): args is { transaction_h
 /**
  * Gets the logs from a transaction on the COTI blockchain
  * @param transaction_hash The hash of the transaction to get logs for
- * @returns Detailed information about the transaction logs including event names, topics, and data
+ * @returns An object with transaction logs and formatted text
  */
-export async function performGetTransactionLogs(transaction_hash: string): Promise<string> {
+export async function performGetTransactionLogs(transaction_hash: string): Promise<{
+    transactionHash: string,
+    totalLogs: number,
+    logs: Array<{
+        address: string,
+        blockNumber: number,
+        transactionIndex: number,
+        logIndex: number | string,
+        removed: boolean,
+        topics: string[],
+        data: string,
+        eventSignature?: string
+    }>,
+    explorerUrl?: string,
+    status: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         let receipt;
         try {
             receipt = await provider.getTransactionReceipt(transaction_hash);
         } catch (error) {
-            return `Transaction Not Found or Pending\nTransaction Hash: ${transaction_hash}\nStatus: No logs available (Transaction may be pending or not found)`;
+            const formattedText = `Transaction Not Found or Pending\nTransaction Hash: ${transaction_hash}\nStatus: No logs available (Transaction may be pending or not found)`;
+            return {
+                transactionHash: transaction_hash,
+                totalLogs: 0,
+                logs: [],
+                status: 'Not Found or Pending',
+                formattedText
+            };
         }
 
         if (!receipt) {
-            return `Transaction Not Found or Pending\nTransaction Hash: ${transaction_hash}\nStatus: No logs available (Transaction may be pending or not found)`;
+            const formattedText = `Transaction Not Found or Pending\nTransaction Hash: ${transaction_hash}\nStatus: No logs available (Transaction may be pending or not found)`;
+            return {
+                transactionHash: transaction_hash,
+                totalLogs: 0,
+                logs: [],
+                status: 'Not Found or Pending',
+                formattedText
+            };
         }
 
         const logs = receipt.logs;
         
         if (!logs || logs.length === 0) {
-            return `Transaction Hash: ${transaction_hash}\n\nNo logs found for this transaction.`;
+            const formattedText = `Transaction Hash: ${transaction_hash}\n\nNo logs found for this transaction.`;
+            return {
+                transactionHash: transaction_hash,
+                totalLogs: 0,
+                logs: [],
+                status: 'No Logs',
+                formattedText
+            };
         }
         
-        let result = `Transaction Hash: ${transaction_hash}\n\n`;
-        result += `Total Logs: ${logs.length}\n\n`;
+        const network = await provider.getNetwork();
+        const explorerUrl = `https://${network.name === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}`;
         
-        logs.forEach((log, index) => {
-            result += `Log #${index + 1}:\n`;
-            result += `  Address: ${log.address}\n`;
-            result += `  Block Number: ${log.blockNumber}\n`;
-            result += `  Transaction Index: ${log.transactionIndex}\n`;
-            result += `  Log Index: ${log.index !== undefined ? log.index : 'N/A'}\n`;
-            result += `  Removed: ${log.removed !== undefined ? log.removed : 'false'}\n`;
+        let formattedText = `Transaction Hash: ${transaction_hash}\n\n`;
+        formattedText += `Total Logs: ${logs.length}\n\n`;
+        
+        const logsData = logs.map((log, index) => {
+            formattedText += `Log #${index + 1}:\n`;
+            formattedText += `  Address: ${log.address}\n`;
+            formattedText += `  Block Number: ${log.blockNumber}\n`;
+            formattedText += `  Transaction Index: ${log.transactionIndex}\n`;
+            formattedText += `  Log Index: ${log.index !== undefined ? log.index : 'N/A'}\n`;
+            formattedText += `  Removed: ${log.removed !== undefined ? log.removed : 'false'}\n`;
             
-            result += `  Topics (${log.topics.length}):\n`;
+            formattedText += `  Topics (${log.topics.length}):\n`;
             log.topics.forEach((topic, topicIndex) => {
-                result += `    Topic ${topicIndex}: ${topic}\n`;
+                formattedText += `    Topic ${topicIndex}: ${topic}\n`;
             });
 
-            result += `  Data: ${log.data}\n\n`;
+            formattedText += `  Data: ${log.data}\n\n`;
             
+            let eventSignature: string | undefined;
             if (log.topics.length > 0) {
-                const eventSignature = log.topics[0];
-                result += `  Event Signature: ${eventSignature}\n\n`;
+                eventSignature = log.topics[0];
+                formattedText += `  Event Signature: ${eventSignature}\n\n`;
             }
+            
+            return {
+                address: log.address,
+                blockNumber: log.blockNumber,
+                transactionIndex: log.transactionIndex,
+                logIndex: log.index !== undefined ? log.index : 'N/A',
+                removed: log.removed !== undefined ? log.removed : false,
+                topics: log.topics,
+                data: log.data,
+                eventSignature
+            };
         });
         
-        const network = await provider.getNetwork();
-        result += `View on Explorer: https://${network.name === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}\n`;
+        formattedText += `View on Explorer: ${explorerUrl}\n`;
         
-        return result;
+        return {
+            transactionHash: transaction_hash,
+            totalLogs: logs.length,
+            logs: logsData,
+            explorerUrl,
+            status: 'Success',
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting transaction logs:', error);
         throw new Error(`Failed to get transaction logs: ${error instanceof Error ? error.message : String(error)}`);
@@ -102,7 +160,14 @@ export async function getTransactionLogsHandler(args: Record<string, unknown> | 
 
     const results = await performGetTransactionLogs(transaction_hash);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            totalLogs: results.totalLogs,
+            logs: results.logs,
+            explorerUrl: results.explorerUrl,
+            status: results.status
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

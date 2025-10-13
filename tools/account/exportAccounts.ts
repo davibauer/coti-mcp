@@ -44,9 +44,21 @@ function isExportAccountsArgs(args: Record<string, unknown> | undefined): args i
 /**
  * Exports COTI accounts to a JSON string
  * @param args The arguments for the export
- * @returns A formatted string with the exported accounts
+ * @returns An object with the exported accounts data and formatted text
  */
-export async function performExportAccounts(args: ExportAccountsArgs): Promise<string> {
+export async function performExportAccounts(args: ExportAccountsArgs): Promise<{
+    timestamp: string,
+    accounts: Array<{
+        address: string,
+        private_key: string,
+        aes_key: string,
+        is_default: boolean
+    }>,
+    includeSensitiveData: boolean,
+    totalAccounts: number,
+    exportedAccounts: number,
+    formattedText: string
+}> {
     try {
         const includeSensitiveData = args.include_sensitive_data !== false; // Default to true if not specified
         const specificAddresses = args.account_addresses || [];
@@ -57,7 +69,15 @@ export async function performExportAccounts(args: ExportAccountsArgs): Promise<s
         const currentAccount = process.env.COTI_MCP_CURRENT_PUBLIC_KEY || publicKeys[0] || '';
         
         if (publicKeys.length === 0) {
-            return "No COTI accounts configured in the environment. Nothing to export.";
+            const formattedText = "No COTI accounts configured in the environment. Nothing to export.";
+            return {
+                timestamp: new Date().toISOString(),
+                accounts: [],
+                includeSensitiveData,
+                totalAccounts: 0,
+                exportedAccounts: 0,
+                formattedText
+            };
         }
         
         let filteredIndices: number[] = [];
@@ -93,8 +113,9 @@ export async function performExportAccounts(args: ExportAccountsArgs): Promise<s
             };
         });
         
+        const timestamp = new Date().toISOString();
         const backupData = {
-            timestamp: new Date().toISOString(),
+            timestamp,
             accounts: accounts
         };
         
@@ -110,7 +131,16 @@ export async function performExportAccounts(args: ExportAccountsArgs): Promise<s
             footer = "\nWARNING: This backup contains sensitive information. Keep it secure and do not share it.";
         }
         
-        return `${header}${jsonString}${footer}`;
+        const formattedText = `${header}${jsonString}${footer}`;
+        
+        return {
+            timestamp,
+            accounts,
+            includeSensitiveData,
+            totalAccounts: publicKeys.length,
+            exportedAccounts: accounts.length,
+            formattedText
+        };
     } catch (error) {
         console.error('Error exporting accounts:', error);
         throw new Error(`Failed to export accounts: ${error instanceof Error ? error.message : String(error)}`);
@@ -133,7 +163,14 @@ export async function exportAccountsHandler(args: Record<string, unknown> | unde
     try {
         const results = await performExportAccounts(args || {});
         return {
-            content: [{ type: "text", text: results }],
+            structuredContent: {
+                timestamp: results.timestamp,
+                accounts: results.accounts,
+                includeSensitiveData: results.includeSensitiveData,
+                totalAccounts: results.totalAccounts,
+                exportedAccounts: results.exportedAccounts
+            },
+            content: [{ type: "text", text: results.formattedText }],
             isError: false,
         };
     } catch (error) {

@@ -47,7 +47,14 @@ export async function getPrivateERC721BalanceHandler(args: Record<string, unknow
 
     const results = await performGetPrivateERC721Balance(token_address, account_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            tokenAddress: results.tokenAddress,
+            accountAddress: results.accountAddress,
+            balance: results.balance
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -56,9 +63,16 @@ export async function getPrivateERC721BalanceHandler(args: Record<string, unknow
  * Gets the balance of a private ERC721 NFT collection for a specific address
  * @param token_address The address of the ERC721 token contract
  * @param account_address The address to check the balance for
- * @returns A formatted string with the token balance information
+ * @returns An object with token balance information and formatted text
  */
-export async function performGetPrivateERC721Balance(token_address: string, account_address: string) {
+export async function performGetPrivateERC721Balance(token_address: string, account_address: string): Promise<{
+    name: string,
+    symbol: string,
+    tokenAddress: string,
+    accountAddress: string,
+    balance: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -73,7 +87,16 @@ export async function performGetPrivateERC721Balance(token_address: string, acco
         
         const balance = await tokenContract.balanceOf(account_address);
         
-        return `Token: ${name} (${symbol})\nAccount Address: ${account_address}\nBalance: ${balance.toString()} NFT(s)`;
+        const formattedText = `Token: ${name} (${symbol})\nAccount Address: ${account_address}\nBalance: ${balance.toString()} NFT(s)`;
+        
+        return {
+            name,
+            symbol,
+            tokenAddress: token_address,
+            accountAddress: account_address,
+            balance: balance.toString(),
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting private ERC721 balance:', error);
         throw new Error(`Failed to get private ERC721 balance: ${error instanceof Error ? error.message : String(error)}`);

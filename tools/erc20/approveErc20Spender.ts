@@ -56,7 +56,16 @@ export async function approveERC20SpenderHandler(args: Record<string, unknown> |
 
     const results = await performApproveERC20Spender(token_address, spender_address, amount_wei, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            tokenSymbol: results.tokenSymbol,
+            tokenAddress: results.tokenAddress,
+            spenderAddress: results.spenderAddress,
+            amountWei: results.amountWei,
+            approveFunctionSelector: results.approveFunctionSelector,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -67,9 +76,18 @@ export async function approveERC20SpenderHandler(args: Record<string, unknown> |
  * @param spender_address - Address of the spender to approve
  * @param amount_wei - Amount to approve in Wei
  * @param gas_limit - Optional gas limit for the transaction
- * @returns A formatted success message with transaction details
+ * @returns An object with approval details and formatted text
  */
-export async function performApproveERC20Spender(token_address: string, spender_address: string, amount_wei: string, gas_limit?: string) {
+export async function performApproveERC20Spender(token_address: string, spender_address: string, amount_wei: string, gas_limit?: string): Promise<{
+    transactionHash: string,
+    tokenSymbol: string,
+    tokenAddress: string,
+    spenderAddress: string,
+    amountWei: string,
+    approveFunctionSelector: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -95,7 +113,18 @@ export async function performApproveERC20Spender(token_address: string, spender_
         
         const receipt = await tx.wait();
 
-        return `ERC20 Approval Successful!\nToken: ${symbolResult}\nTransaction Hash: ${receipt?.hash}\nAmount in Wei: ${amount_wei}\nSpender: ${spender_address}\nApprove Function Selector: ${approveSelector}`;
+        const formattedText = `ERC20 Approval Successful!\nToken: ${symbolResult}\nTransaction Hash: ${receipt?.hash}\nAmount in Wei: ${amount_wei}\nSpender: ${spender_address}\nApprove Function Selector: ${approveSelector}`;
+        
+        return {
+            transactionHash: receipt?.hash || '',
+            tokenSymbol: symbolResult,
+            tokenAddress: token_address,
+            spenderAddress: spender_address,
+            amountWei: amount_wei,
+            approveFunctionSelector: approveSelector,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error approving ERC20 spender:', error);
         throw new Error(`Failed to approve ERC20 spender: ${error instanceof Error ? error.message : String(error)}`);

@@ -26,7 +26,12 @@ export async function getNativeBalanceHandler(args: Record<string, unknown> | un
 
     const results = await performGetNativeBalance(account_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            account: results.account,
+            balanceWei: results.balanceWei,
+            balanceCoti: results.balanceCoti
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -34,13 +39,28 @@ export async function getNativeBalanceHandler(args: Record<string, unknown> | un
 /**
  * Gets the native COTI token balance of a COTI blockchain account
  * @param account_address The COTI account address to get the balance for
- * @returns The native COTI token balance of the account
+ * @returns An object with the account balance and formatted text
  */
-export async function performGetNativeBalance(account_address: string): Promise<string> {
+export async function performGetNativeBalance(account_address: string): Promise<{
+    account: string,
+    balanceWei: string,
+    balanceCoti: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const balance = await provider.getBalance(account_address);
-        return `Account: ${account_address}\nBalance: ${balance} wei (${ethers.formatEther(balance)} COTI)`;
+        const balanceWei = balance.toString();
+        const balanceCoti = ethers.formatEther(balance);
+        
+        const formattedText = `Account: ${account_address}\nBalance: ${balanceWei} wei (${balanceCoti} COTI)`;
+        
+        return {
+            account: account_address,
+            balanceWei,
+            balanceCoti,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting native balance:', error);
         throw new Error(`Failed to get native balance: ${error instanceof Error ? error.message : String(error)}`);

@@ -54,7 +54,15 @@ export async function getERC20AllowanceHandler(args: Record<string, unknown> | u
 
     const results = await performGetERC20Allowance(token_address, owner_address, spender_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            tokenSymbol: results.tokenSymbol,
+            decimals: results.decimals,
+            ownerAddress: results.ownerAddress,
+            spenderAddress: results.spenderAddress,
+            allowance: results.allowance,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -64,9 +72,17 @@ export async function getERC20AllowanceHandler(args: Record<string, unknown> | u
  * @param token_address - Address of the ERC20 token contract
  * @param owner_address - Address of the token owner
  * @param spender_address - Address of the spender to check allowance for
- * @returns A formatted message with the allowance details
+ * @returns An object with allowance details and formatted text
  */
-export async function performGetERC20Allowance(token_address: string, owner_address: string, spender_address: string) {
+export async function performGetERC20Allowance(token_address: string, owner_address: string, spender_address: string): Promise<{
+    tokenSymbol: string,
+    decimals: number,
+    ownerAddress: string,
+    spenderAddress: string,
+    allowance: string,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -83,7 +99,17 @@ export async function performGetERC20Allowance(token_address: string, owner_addr
         const decryptedAllowance = decryptUint(allowanceResult, currentAccountKeys.aesKey);
         const formattedAllowance = decryptedAllowance ? ethers.formatUnits(decryptedAllowance, decimalsResult) : "Unable to decrypt";
         
-        return `ERC20 Token Allowance:\nToken: ${symbolResult}\nOwner: ${owner_address}\nSpender: ${spender_address}\nAllowance: ${formattedAllowance}`;
+        const formattedText = `ERC20 Token Allowance:\nToken: ${symbolResult}\nOwner: ${owner_address}\nSpender: ${spender_address}\nAllowance: ${formattedAllowance}`;
+        
+        return {
+            tokenSymbol: symbolResult,
+            decimals: Number(decimalsResult),
+            ownerAddress: owner_address,
+            spenderAddress: spender_address,
+            allowance: formattedAllowance,
+            tokenAddress: token_address,    
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting ERC20 allowance:', error);
         throw new Error(`Failed to get ERC20 allowance: ${error instanceof Error ? error.message : String(error)}`);

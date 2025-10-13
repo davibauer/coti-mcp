@@ -54,7 +54,18 @@ export async function setPrivateERC721ApprovalForAllHandler(args: Record<string,
 
     const results = await performSetPrivateERC721ApprovalForAll(token_address, operator_address, approved, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            tokenAddress: results.tokenAddress,
+            tokenName: results.tokenName,
+            tokenSymbol: results.tokenSymbol,
+            operatorAddress: results.operatorAddress,
+            approved: results.approved,
+            action: results.action,
+            owner: results.owner,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -65,14 +76,25 @@ export async function setPrivateERC721ApprovalForAllHandler(args: Record<string,
  * @param operator_address The address to approve as operator
  * @param approved Whether to approve or revoke the operator
  * @param gas_limit Optional gas limit for the transaction
- * @returns A formatted string with the transaction information
+ * @returns An object with transaction information and formatted text
  */
 export async function performSetPrivateERC721ApprovalForAll(
     token_address: string,
     operator_address: string,
     approved: boolean,
     gas_limit?: string
-) {
+): Promise<{
+    transactionHash: string,
+    tokenAddress: string,
+    tokenName: string,
+    tokenSymbol: string,
+    operatorAddress: string,
+    approved: boolean,
+    action: string,
+    owner: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -97,7 +119,20 @@ export async function performSetPrivateERC721ApprovalForAll(
         
         const action = approved ? "approved" : "revoked approval for";
         
-        return `Successfully ${action} ${operator_address} to manage all your NFTs from ${name} (${symbol}).\nTransaction hash: ${receipt.hash}`;
+        const formattedText = `Successfully ${action} ${operator_address} to manage all your NFTs from ${name} (${symbol}).\nTransaction hash: ${receipt.hash}`;
+        
+        return {
+            transactionHash: receipt.hash,
+            tokenAddress: token_address,
+            tokenName: name,
+            tokenSymbol: symbol,
+            operatorAddress: operator_address,
+            approved,
+            action,
+            owner: wallet.address,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error setting private ERC721 approval for all:', error);
         throw new Error(`Failed to set private ERC721 approval for all: ${error instanceof Error ? error.message : String(error)}`);

@@ -44,7 +44,15 @@ export async function getPrivateERC20TotalSupplyHandler(args: Record<string, unk
 
     const results = await performGetPrivateERC20TotalSupply(token_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            decimals: results.decimals,
+            totalSupplyWei: results.totalSupplyWei,
+            totalSupplyFormatted: results.totalSupplyFormatted,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -52,9 +60,17 @@ export async function getPrivateERC20TotalSupplyHandler(args: Record<string, unk
 /**
  * Gets the total supply of a private ERC20 token on the COTI blockchain
  * @param token_address The ERC20 token contract address on COTI blockchain
- * @returns The total supply of the token
+ * @returns An object with total supply details and formatted text
  */
-export async function performGetPrivateERC20TotalSupply(token_address: string) {
+export async function performGetPrivateERC20TotalSupply(token_address: string): Promise<{
+    name: string,
+    symbol: string,
+    decimals: number,
+    totalSupplyWei: string,
+    totalSupplyFormatted: string,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -71,7 +87,17 @@ export async function performGetPrivateERC20TotalSupply(token_address: string) {
         const totalSupply = await tokenContract.totalSupply();
         const formattedTotalSupply = ethers.formatUnits(totalSupply, decimals);
         
-        return `Collection: ${name} (${symbol})\nTotal Supply (in Wei): ${totalSupply}\nTotal Supply (formatted): ${formattedTotalSupply} (${decimals} decimals)\nToken Address: ${token_address}`;
+        const formattedText = `Collection: ${name} (${symbol})\nTotal Supply (in Wei): ${totalSupply}\nTotal Supply (formatted): ${formattedTotalSupply} (${decimals} decimals)\nToken Address: ${token_address}`;
+        
+        return {
+            name,
+            symbol,
+            decimals: Number(decimals),
+            totalSupplyWei: totalSupply.toString(),
+            totalSupplyFormatted: formattedTotalSupply,
+            tokenAddress: token_address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting private ERC20 total supply:', error);
         throw new Error(`Failed to get private ERC20 total supply: ${error instanceof Error ? error.message : String(error)}`);

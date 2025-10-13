@@ -47,7 +47,15 @@ export async function getPrivateERC721TokenURIHandler(args: Record<string, unkno
 
     const results = await performGetPrivateERC721TokenURI(token_address, token_id);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            tokenId: results.tokenId,
+            tokenURI: results.tokenURI,
+            decryptionSuccess: results.decryptionSuccess,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -56,9 +64,17 @@ export async function getPrivateERC721TokenURIHandler(args: Record<string, unkno
  * Gets the tokenURI for a private ERC721 NFT token on the COTI blockchain
  * @param token_address The address of the ERC721 token contract
  * @param token_id The ID of the token to get the URI for
- * @returns A formatted string with the token URI information
+ * @returns An object with token URI information and formatted text
  */
-export async function performGetPrivateERC721TokenURI(token_address: string, token_id: string) {
+export async function performGetPrivateERC721TokenURI(token_address: string, token_id: string): Promise<{
+    name: string,
+    symbol: string,
+    tokenId: string,
+    tokenURI: string,
+    decryptionSuccess: boolean,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -76,13 +92,25 @@ export async function performGetPrivateERC721TokenURI(token_address: string, tok
         const encryptedTokenURI = await tokenContract.tokenURI(BigInt(token_id));
 
         let tokenURI;
+        let decryptionSuccess = false;
         try {
             tokenURI = await wallet.decryptValue(encryptedTokenURI);
+            decryptionSuccess = true;
         } catch (decryptError) {
-            tokenURI = decryptError;
+            tokenURI = `Decryption failed: ${decryptError}`;
         }
         
-        return `Token: ${nameResult} (${symbolResult})\nToken ID: ${token_id}\nDecrypted Token URI: ${tokenURI}`;
+        const formattedText = `Token: ${nameResult} (${symbolResult})\nToken ID: ${token_id}\nDecrypted Token URI: ${tokenURI}`;
+        
+        return {
+            name: nameResult,
+            symbol: symbolResult,
+            tokenId: token_id,
+            tokenURI: tokenURI.toString(),
+            decryptionSuccess,
+            tokenAddress: token_address,
+            formattedText
+        };
     } catch (error) {
         throw new Error(`Failed to get private ERC721 token URI: ${error instanceof Error ? error.message : String(error)}`);
     }

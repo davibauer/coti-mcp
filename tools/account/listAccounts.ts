@@ -11,35 +11,71 @@ export const LIST_ACCOUNTS: ToolAnnotations = {
 
 /**
  * Lists all available COTI accounts configured in the environment.
- * @returns A formatted string with account information.
+ * @returns An object with account information and formatted text.
  */
-export async function performListAccounts(): Promise<string> {
+export async function performListAccounts(): Promise<{
+    accounts: Array<{
+        address: string,
+        privateKey: string,
+        aesKey: string,
+        isDefault: boolean,
+        index: number
+    }>,
+    defaultAccount: string,
+    network: string,
+    totalAccounts: number,
+    formattedText: string
+}> {
     try {
         const publicKeys = (process.env.COTI_MCP_PUBLIC_KEY || '').split(',').filter(Boolean);
         const privateKeys = (process.env.COTI_MCP_PRIVATE_KEY || '').split(',').filter(Boolean);
         const aesKeys = (process.env.COTI_MCP_AES_KEY || '').split(',').filter(Boolean);
         const currentAccount = process.env.COTI_MCP_CURRENT_PUBLIC_KEY || publicKeys[0] || '';
+        const network = getNetwork();
         
         if (publicKeys.length === 0) {
-            return "No COTI accounts configured in the environment.";
+            const formattedText = "No COTI accounts configured in the environment.";
+            return {
+                accounts: [],
+                defaultAccount: '',
+                network,
+                totalAccounts: 0,
+                formattedText
+            };
         }
         
-        let result = "Available COTI Accounts on " + getNetwork() + ":\n\n";
-        result += "======================\n\n";
+        const accounts = [];
+        let formattedText = "Available COTI Accounts on " + network + ":\n\n";
+        formattedText += "======================\n\n";
         
         for (let i = 0; i < publicKeys.length; i++) {
             const publicKey = publicKeys[i];
             const privateKey = privateKeys[i] ? maskSensitiveString(privateKeys[i]) : "Not available";
             const aesKey = aesKeys[i] ? maskSensitiveString(aesKeys[i]) : "Not available";
-            const isDefault = publicKey === currentAccount ? " (DEFAULT)" : "";
+            const isDefault = publicKey === currentAccount;
+            const defaultText = isDefault ? " (DEFAULT)" : "";
             
-            result += `Account ${i + 1}${isDefault}:\n\n`;
-            result += `Address: ${publicKey}\n\n`;
-            result += `Private Key: ${privateKey}\n\n`;
-            result += `AES Key: ${aesKey}\n\n`;
+            accounts.push({
+                address: publicKey,
+                privateKey,
+                aesKey,
+                isDefault,
+                index: i + 1
+            });
+            
+            formattedText += `Account ${i + 1}${defaultText}:\n\n`;
+            formattedText += `Address: ${publicKey}\n\n`;
+            formattedText += `Private Key: ${privateKey}\n\n`;
+            formattedText += `AES Key: ${aesKey}\n\n`;
         }
         
-        return result;
+        return {
+            accounts,
+            defaultAccount: currentAccount,
+            network,
+            totalAccounts: publicKeys.length,
+            formattedText
+        };
     } catch (error) {
         console.error('Error listing accounts:', error);
         throw new Error(`Failed to list accounts: ${error instanceof Error ? error.message : String(error)}`);
@@ -54,7 +90,13 @@ export async function performListAccounts(): Promise<string> {
 export async function listAccountsHandler(args: Record<string, unknown> | undefined): Promise<any> {
     const results = await performListAccounts();
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            accounts: results.accounts,
+            defaultAccount: results.defaultAccount,
+            network: results.network,
+            totalAccounts: results.totalAccounts
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

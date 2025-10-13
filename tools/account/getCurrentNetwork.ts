@@ -9,13 +9,21 @@ export const GET_CURRENT_NETWORK: ToolAnnotations = {
 
 /**
  * Gets the currently configured COTI network.
- * @returns A formatted string with the current network
+ * @returns An object with the current network and formatted text
  */
-export async function performGetCurrentNetwork(): Promise<string> {
+export async function performGetCurrentNetwork(): Promise<{
+    network: string,
+    formattedText: string
+}> {
     try {
         const network = process.env.COTI_MCP_NETWORK?.toLowerCase() || 'testnet';
         
-        return `Current network: ${network}`;
+        const formattedText = `Current network: ${network}`;
+        
+        return {
+            network,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting current network:', error);
         throw new Error(`Failed to get current network: ${error instanceof Error ? error.message : String(error)}`);
@@ -30,7 +38,10 @@ export async function performGetCurrentNetwork(): Promise<string> {
 export async function getCurrentNetworkHandler(args: Record<string, unknown> | undefined) {
     const results = await performGetCurrentNetwork();
     return {
-        content: [{ type: "text" as const, text: results }],
+        structuredContent: {
+            network: results.network
+        },
+        content: [{ type: "text" as const, text: results.formattedText }],
         isError: false,
     };
 }

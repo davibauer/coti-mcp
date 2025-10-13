@@ -47,7 +47,16 @@ export async function getPrivateERC721ApprovedHandler(args: Record<string, unkno
 
     const results = await performGetPrivateERC721Approved(token_address, token_id);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            tokenId: results.tokenId,
+            owner: results.owner,
+            approvedAddress: results.approvedAddress,
+            hasApproval: results.hasApproval,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -56,9 +65,18 @@ export async function getPrivateERC721ApprovedHandler(args: Record<string, unkno
  * Gets the approved address for a private ERC721 NFT token
  * @param token_address The address of the ERC721 token contract
  * @param token_id The ID of the token to check approval for
- * @returns A formatted string with the approval information
+ * @returns An object with approval information and formatted text
  */
-export async function performGetPrivateERC721Approved(token_address: string, token_id: string) {
+export async function performGetPrivateERC721Approved(token_address: string, token_id: string): Promise<{
+    name: string,
+    symbol: string,
+    tokenId: string,
+    owner: string,
+    approvedAddress: string,
+    hasApproval: boolean,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -77,12 +95,24 @@ export async function performGetPrivateERC721Approved(token_address: string, tok
         // Get the approved address for the token
         const approved = await tokenContract.getApproved(token_id);
         
+        const hasApproval = approved && approved !== "0x0000000000000000000000000000000000000000";
         let approvalStatus = "No address is currently approved to transfer this token.";
-        if (approved && approved !== "0x0000000000000000000000000000000000000000") {
+        if (hasApproval) {
             approvalStatus = `Approved address: ${approved}`;
         }
         
-        return `Token: ${name} (${symbol})\nToken ID: ${token_id}\nOwner: ${owner}\n${approvalStatus}`;
+        const formattedText = `Token: ${name} (${symbol})\nToken ID: ${token_id}\nOwner: ${owner}\n${approvalStatus}`;
+        
+        return {
+            name,
+            symbol,
+            tokenId: token_id,
+            owner,
+            approvedAddress: approved || '',
+            hasApproval: !!hasApproval,
+            tokenAddress: token_address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting private ERC721 approved address:', error);
         throw new Error(`Failed to get private ERC721 approved address: ${error instanceof Error ? error.message : String(error)}`);

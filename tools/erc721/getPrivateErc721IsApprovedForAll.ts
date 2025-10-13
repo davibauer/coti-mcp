@@ -52,7 +52,15 @@ export async function getPrivateERC721IsApprovedForAllHandler(args: Record<strin
 
     const results = await performGetPrivateERC721IsApprovedForAll(token_address, owner_address, operator_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            ownerAddress: results.ownerAddress,
+            operatorAddress: results.operatorAddress,
+            isApprovedForAll: results.isApprovedForAll,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -62,13 +70,21 @@ export async function getPrivateERC721IsApprovedForAllHandler(args: Record<strin
  * @param token_address The address of the ERC721 token contract
  * @param owner_address The address of the token owner
  * @param operator_address The address of the operator to check approval for
- * @returns A formatted string with the approval information
+ * @returns An object with approval information and formatted text
  */
 export async function performGetPrivateERC721IsApprovedForAll(
     token_address: string,
     owner_address: string,
     operator_address: string
-) {
+): Promise<{
+    name: string,
+    symbol: string,
+    ownerAddress: string,
+    operatorAddress: string,
+    isApprovedForAll: boolean,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -88,7 +104,17 @@ export async function performGetPrivateERC721IsApprovedForAll(
             ? `${operator_address} IS approved to manage all NFTs owned by ${owner_address}.`
             : `${operator_address} is NOT approved to manage all NFTs owned by ${owner_address}.`;
         
-        return `Token: ${name} (${symbol})\nOwner: ${owner_address}\nOperator: ${operator_address}\nApproval Status: ${approvalStatus}`;
+        const formattedText = `Token: ${name} (${symbol})\nOwner: ${owner_address}\nOperator: ${operator_address}\nApproval Status: ${approvalStatus}`;
+        
+        return {
+            name,
+            symbol,
+            ownerAddress: owner_address,
+            operatorAddress: operator_address,
+            isApprovedForAll: isApproved,
+            tokenAddress: token_address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error checking private ERC721 approval for all:', error);
         throw new Error(`Failed to check private ERC721 approval for all: ${error instanceof Error ? error.message : String(error)}`);

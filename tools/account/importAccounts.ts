@@ -97,9 +97,16 @@ function parseBackupData(backupData: string): BackupData {
 /**
  * Imports COTI accounts from a backup
  * @param args The arguments for the import
- * @returns A message with the result of the import
+ * @returns An object with the import results and formatted text
  */
-export async function performImportAccounts(args: ImportAccountsArgs): Promise<string> {
+export async function performImportAccounts(args: ImportAccountsArgs): Promise<{
+    importedAccounts: number,
+    totalAccounts: number,
+    mergedWithExisting: boolean,
+    defaultAccount: string,
+    accountAddresses: string[],
+    formattedText: string
+}> {
     try {
         const mergeWithExisting = args.merge_with_existing !== false; // Default to true if not specified
         
@@ -174,18 +181,25 @@ export async function performImportAccounts(args: ImportAccountsArgs): Promise<s
         }
         
         // Generate result message
-        let result = `Successfully imported ${backupData.accounts.length} account(s).\n\n`;
+        let formattedText = `Successfully imported ${backupData.accounts.length} account(s).\n\n`;
         
         if (mergeWithExisting) {
-            result += `Merged with existing accounts. Total accounts now: ${newPublicKeys.length}.\n\n`;
+            formattedText += `Merged with existing accounts. Total accounts now: ${newPublicKeys.length}.\n\n`;
         } else {
-            result += `Replaced existing accounts. Total accounts now: ${newPublicKeys.length}.\n\n`;
+            formattedText += `Replaced existing accounts. Total accounts now: ${newPublicKeys.length}.\n\n`;
         }
         
-        result += `Default account set to: ${process.env.COTI_MCP_CURRENT_PUBLIC_KEY}\n\n`;
-        result += `Note: These changes are only active for the current session. To make them permanent, you need to update your environment variables.`;
+        formattedText += `Default account set to: ${process.env.COTI_MCP_CURRENT_PUBLIC_KEY}\n\n`;
+        formattedText += `Note: These changes are only active for the current session. To make them permanent, you need to update your environment variables.`;
         
-        return result;
+        return {
+            importedAccounts: backupData.accounts.length,
+            totalAccounts: newPublicKeys.length,
+            mergeWithExisting,
+            defaultAccount: process.env.COTI_MCP_CURRENT_PUBLIC_KEY || '',
+            accountAddresses: newPublicKeys,
+            formattedText
+        };
     } catch (error) {
         console.error('Error importing accounts:', error);
         throw new Error(`Failed to import accounts: ${error instanceof Error ? error.message : String(error)}`);
@@ -208,7 +222,14 @@ export async function importAccountsHandler(args: Record<string, unknown> | unde
     try {
         const results = await performImportAccounts(args);
         return {
-            content: [{ type: "text", text: results }],
+            structuredContent: {
+                importedAccounts: results.importedAccounts,
+                totalAccounts: results.totalAccounts,
+                mergedWithExisting: results.mergedWithExisting,
+                defaultAccount: results.defaultAccount,
+                accountAddresses: results.accountAddresses
+            },
+            content: [{ type: "text", text: results.formattedText }],
             isError: false,
         };
     } catch (error) {

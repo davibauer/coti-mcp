@@ -32,9 +32,13 @@ export function isDecryptValueArgs(args: unknown): args is { ciphertext: bigint 
 /**
  * Decrypts a value using the COTI AES key.
  * @param ciphertext The ciphertext to decrypt.
- * @returns The decrypted value.
+ * @returns An object with the decrypted value and formatted text.
  */
-export async function performDecryptValue(ciphertext: bigint) {
+export async function performDecryptValue(ciphertext: bigint): Promise<{
+    decryptedMessage: string,
+    ciphertext: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -42,7 +46,13 @@ export async function performDecryptValue(ciphertext: bigint) {
         
         const decryptedMessage = await wallet.decryptValue(ciphertext);
         
-        return `Decrypted Message: ${decryptedMessage}`;
+        const formattedText = `Decrypted Message: ${decryptedMessage}`;
+        
+        return {
+            decryptedMessage: decryptedMessage.toString(),
+            ciphertext: ciphertext.toString(),
+            formattedText
+        };
     } catch (error) {
         console.error('Error decrypting message:', error);
         throw new Error(`Failed to decrypt message: ${error instanceof Error ? error.message : String(error)}`);
@@ -62,7 +72,11 @@ export async function decryptValueHandler(args: Record<string, unknown> | undefi
 
     const results = await performDecryptValue(BigInt(ciphertext));
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            decryptedMessage: results.decryptedMessage,
+            ciphertext: results.ciphertext
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

@@ -51,7 +51,16 @@ export async function deployPrivateERC20ContractHandler(args: Record<string, unk
 
     const results = await performDeployPrivateERC20Contract(name, symbol, decimals, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            contractAddress: results.contractAddress,
+            transactionHash: results.transactionHash,
+            name: results.name,
+            symbol: results.symbol,
+            decimals: results.decimals,
+            gasLimit: results.gasLimit,
+            deployer: results.deployer
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -62,9 +71,18 @@ export async function deployPrivateERC20ContractHandler(args: Record<string, unk
  * @param symbol The symbol of the token
  * @param decimals The number of decimals for the token
  * @param gas_limit Optional gas limit for the deployment transaction
- * @returns The deployed contract address
+ * @returns An object with deployment details and formatted text
  */
-export async function performDeployPrivateERC20Contract(name: string, symbol: string, decimals: number, gas_limit?: string) {
+export async function performDeployPrivateERC20Contract(name: string, symbol: string, decimals: number, gas_limit?: string): Promise<{
+    contractAddress: string,
+    transactionHash: string,
+    name: string,
+    symbol: string,
+    decimals: number,
+    gasLimit?: string,
+    deployer: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -95,7 +113,18 @@ export async function performDeployPrivateERC20Contract(name: string, symbol: st
         const receipt = await contract.deploymentTransaction();
         const contractAddress = await contract.getAddress();
         
-        return `Private ERC20 Contract Deployment Successful!\n\nName: ${name}\n\nSymbol: ${symbol}\n\nContract Address: ${contractAddress}\n\nTransaction Hash: ${receipt?.hash}`;
+        const formattedText = `Private ERC20 Contract Deployment Successful!\n\nName: ${name}\n\nSymbol: ${symbol}\n\nContract Address: ${contractAddress}\n\nTransaction Hash: ${receipt?.hash}`;
+        
+        return {
+            contractAddress,
+            transactionHash: receipt?.hash || '',
+            name,
+            symbol,
+            decimals,
+            gasLimit: gas_limit,
+            deployer: wallet.address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error deploying private ERC20 contract:', error);
         throw new Error(`Failed to deploy private ERC20 contract: ${error instanceof Error ? error.message : String(error)}`);

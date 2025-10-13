@@ -44,7 +44,13 @@ export async function getPrivateERC20DecimalsHandler(args: Record<string, unknow
 
     const results = await performGetPrivateERC20Decimals(token_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            decimals: results.decimals,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -52,9 +58,15 @@ export async function getPrivateERC20DecimalsHandler(args: Record<string, unknow
 /**
  * Performs the getPrivateERC20Decimals tool
  * @param token_address The token contract address
- * @returns The number of decimals in this contract
+ * @returns An object with decimals information and formatted text
  */
-export async function performGetPrivateERC20Decimals(token_address: string) {
+export async function performGetPrivateERC20Decimals(token_address: string): Promise<{
+    name: string,
+    symbol: string,
+    decimals: number,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -68,7 +80,15 @@ export async function performGetPrivateERC20Decimals(token_address: string) {
         const name = await tokenContract.name();
         const symbol = await tokenContract.symbol();
         
-        return `Collection: ${name} (${symbol})\nDecimals: ${decimals}\nToken Address: ${token_address}`;
+        const formattedText = `Collection: ${name} (${symbol})\nDecimals: ${decimals}\nToken Address: ${token_address}`;
+        
+        return {
+            name,
+            symbol,
+           decimals: Number(decimals),
+            tokenAddress: token_address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting private ERC20 decimals:', error);
         throw new Error(`Failed to get private ERC20 decimals: ${error instanceof Error ? error.message : String(error)}`);

@@ -52,33 +52,56 @@ export async function getPrivateERC20BalanceHandler(args: Record<string, unknown
     }
     const { account_address, token_address } = args;
 
-    const results = await performGetPrivateERC20TokenBalance(account_address, token_address);
-    return {
-        content: [{ type: "text", text: results }],
-        isError: false,
-    };
+    try {
+        const results = await performGetPrivateERC20TokenBalance(account_address, token_address);
+        return {
+            structuredContent: {
+                balance: results.balance,
+                decimals: Number(results.decimals),
+                symbol: results.symbol,
+                name: results.name,
+                accountAddress: results.accountAddress,
+                tokenAddress: results.tokenAddress
+            },
+            content: [{ type: "text", text: results.formattedText }],
+            isError: false,
+        };
+    } catch (error) {
+        return {
+            content: [{ type: "text", text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+            isError: true,
+        };
+    }
 }
 
 /**
  * Gets the balance of a private ERC20 token on the COTI blockchain
  * @param account_address The COTI account address to get the balance for
  * @param token_address The ERC20 token contract address on COTI blockchain
- * @returns The decrypted token balance
+ * @returns An object with the token balance details and formatted text
  */
-export async function performGetPrivateERC20TokenBalance(account_address: string, token_address: string) {
+export async function performGetPrivateERC20TokenBalance(account_address: string, token_address: string): Promise<{
+    balance: string,
+    decimals: number,
+    symbol: string,
+    name: string,
+    accountAddress: string,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
 
-        wallet.setAesKey(currentAccountKeys.aesKey)
+        wallet.setAesKey(currentAccountKeys.aesKey);
         
         const tokenContract = new Contract(token_address, ERC20_ABI, wallet);
         
         const [nameResult, decimalsResult, symbolResult] = await Promise.all([
-            tokenContract.name!(),
-            tokenContract.decimals!(),
-            tokenContract.symbol!()
+            tokenContract.name(),
+            tokenContract.decimals(),
+            tokenContract.symbol()
         ]);
         
         const encryptedBalance = await tokenContract.balanceOf(account_address);
@@ -87,15 +110,23 @@ export async function performGetPrivateERC20TokenBalance(account_address: string
             const decryptedBalance = decryptUint(encryptedBalance, currentAccountKeys.aesKey);
             const formattedBalance = decryptedBalance ? ethers.formatUnits(decryptedBalance, decimalsResult) : "Unable to decrypt";
             
-            return `Balance: ${formattedBalance}\nDecimals: ${decimalsResult}\nSymbol: ${symbolResult}\nName: ${nameResult}`;
-        } catch (error) {
-            console.error('Error decrypting private token balance:', error);
-            throw new Error(`Failed to decrypt private token balance: ${error instanceof Error ? error.message : String(error)}`);
+            const formattedText = `Balance: ${formattedBalance}\nDecimals: ${Number(decimalsResult)}\nSymbol: ${symbolResult}\nName: ${nameResult}`;
+            
+            return {
+                balance: formattedBalance,
+                decimals: Number(decimalsResult),
+                symbol: symbolResult,
+                name: nameResult,
+                accountAddress: account_address,
+                tokenAddress: token_address,
+                formattedText
+            };
+        } catch (decryptError) {
+            console.error('Error decrypting private token balance:', decryptError);
+            throw new Error(`Failed to decrypt private token balance: ${decryptError instanceof Error ? decryptError.message : String(decryptError)}`);
         }
     } catch (error) {
         console.error('Error fetching private token balance:', error);
         throw new Error(`Failed to get private token balance: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
-
-

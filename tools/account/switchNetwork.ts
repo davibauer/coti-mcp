@@ -28,19 +28,34 @@ export function isSwitchNetworkArgs(args: unknown): args is { network: 'testnet'
 /**
  * Switches the COTI network for blockchain operations.
  * @param network The network to switch to ('testnet' or 'mainnet')
- * @returns A formatted string confirming the network switch
+ * @returns An object with network switch information and formatted text
  */
-export async function performSwitchNetwork(network: 'testnet' | 'mainnet') {
+export async function performSwitchNetwork(network: 'testnet' | 'mainnet'): Promise<{
+    previousNetwork: string,
+    newNetwork: string,
+    wasAlreadySet: boolean,
+    formattedText: string
+}> {
     try {
         const previousNetwork = process.env.COTI_MCP_NETWORK?.toLowerCase() || 'testnet';
         
         process.env.COTI_MCP_NETWORK = network;
         
-        if (previousNetwork === network) {
-            return `Network is already set to: ${network}`;
+        const wasAlreadySet = previousNetwork === network;
+        
+        let formattedText: string;
+        if (wasAlreadySet) {
+            formattedText = `Network is already set to: ${network}`;
+        } else {
+            formattedText = `Network successfully switched from ${previousNetwork} to: ${network}`;
         }
         
-        return `Network successfully switched from ${previousNetwork} to: ${network}`;
+        return {
+            previousNetwork,
+            newNetwork: network,
+            wasAlreadySet,
+            formattedText
+        };
     } catch (error) {
         console.error('Error switching network:', error);
         throw new Error(`Failed to switch network: ${error instanceof Error ? error.message : String(error)}`);
@@ -60,7 +75,12 @@ export async function switchNetworkHandler(args: Record<string, unknown> | undef
 
     const results = await performSwitchNetwork(network);
     return {
-        content: [{ type: "text" as const, text: results }],
+        structuredContent: {
+            previousNetwork: results.previousNetwork,
+            newNetwork: results.newNetwork,
+            wasAlreadySet: results.wasAlreadySet
+        },
+        content: [{ type: "text" as const, text: results.formattedText }],
         isError: false,
     };
 }

@@ -52,7 +52,16 @@ export async function mintPrivateERC721TokenHandler(args: Record<string, unknown
 
     const results = await performMintPrivateERC721Token(token_address, to_address, token_uri, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            tokenAddress: results.tokenAddress,
+            toAddress: results.toAddress,
+            tokenUri: results.tokenUri,
+            tokenId: results.tokenId,
+            minter: results.minter,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -63,9 +72,18 @@ export async function mintPrivateERC721TokenHandler(args: Record<string, unknown
  * @param to_address The address to receive the minted NFT.
  * @param token_uri The URI for the token metadata (can be IPFS URI or any other URI).
  * @param gas_limit Optional gas limit for the minting transaction.
- * @returns The transaction hash and token ID upon successful minting.
+ * @returns An object with minting details and formatted text.
  */
-export async function performMintPrivateERC721Token(token_address: string, to_address: string, token_uri: string, gas_limit?: string) {
+export async function performMintPrivateERC721Token(token_address: string, to_address: string, token_uri: string, gas_limit?: string): Promise<{
+    transactionHash: string,
+    tokenAddress: string,
+    toAddress: string,
+    tokenUri: string,
+    tokenId: string,
+    minter: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -95,7 +113,18 @@ export async function performMintPrivateERC721Token(token_address: string, to_ad
             }
         }
         
-        return `NFT Minting Successful!\nTo Address: ${to_address}\nToken Address: ${token_address}\nToken URI: ${token_uri}\nToken ID: ${tokenId}\nTransaction Hash: ${receipt.hash}`;
+        const formattedText = `NFT Minting Successful!\nTo Address: ${to_address}\nToken Address: ${token_address}\nToken URI: ${token_uri}\nToken ID: ${tokenId}\nTransaction Hash: ${receipt.hash}`;
+        
+        return {
+            transactionHash: receipt.hash,
+            tokenAddress: token_address,
+            toAddress: to_address,
+            tokenUri: token_uri,
+            tokenId,
+            minter: wallet.address,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error minting private ERC721 token:', error);
         throw new Error(`Failed to mint private ERC721 token: ${error instanceof Error ? error.message : String(error)}`);

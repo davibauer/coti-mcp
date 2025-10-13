@@ -44,7 +44,13 @@ export async function getPrivateERC721TotalSupplyHandler(args: Record<string, un
 
     const results = await performGetPrivateERC721TotalSupply(token_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            totalSupply: results.totalSupply,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -52,9 +58,15 @@ export async function getPrivateERC721TotalSupplyHandler(args: Record<string, un
 /**
  * Gets the total supply of tokens for a private ERC721 NFT collection
  * @param token_address The address of the ERC721 token contract
- * @returns A formatted string with the total supply information
+ * @returns An object with total supply information and formatted text
  */
-export async function performGetPrivateERC721TotalSupply(token_address: string) {
+export async function performGetPrivateERC721TotalSupply(token_address: string): Promise<{
+    name: string,
+    symbol: string,
+    totalSupply: string,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -69,7 +81,15 @@ export async function performGetPrivateERC721TotalSupply(token_address: string) 
         
         const totalSupply = await tokenContract.totalSupply();
         
-        return `Collection: ${name} (${symbol})\nTotal Supply: ${totalSupply.toString()} tokens`;
+        const formattedText = `Collection: ${name} (${symbol})\nTotal Supply: ${totalSupply.toString()} tokens`;
+        
+        return {
+            name,
+            symbol,
+            totalSupply: totalSupply.toString(),
+            tokenAddress: token_address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting private ERC721 total supply:', error);
         throw new Error(`Failed to get private ERC721 total supply: ${error instanceof Error ? error.message : String(error)}`);

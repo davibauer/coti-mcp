@@ -41,9 +41,15 @@ export function isEncryptValueArgs(args: unknown): args is { message: string, co
  * @param message The message to encrypt.
  * @param contractAddress The contract address.
  * @param functionSelector The function selector.
- * @returns The encrypted message.
+ * @returns An object with the encrypted message and formatted text.
  */
-export async function performEncryptValue(message: bigint | number | string, contractAddress: string, functionSelector: string) {
+export async function performEncryptValue(message: bigint | number | string, contractAddress: string, functionSelector: string): Promise<{
+    encryptedMessage: string,
+    originalMessage: string,
+    contractAddress: string,
+    functionSelector: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -54,7 +60,15 @@ export async function performEncryptValue(message: bigint | number | string, con
         const encryptedMessageString = typeof encryptedMessage === 'object' ? 
             encryptedMessage.toString() : String(encryptedMessage);
         
-        return `Encrypted Message: ${encryptedMessageString}`;
+        const formattedText = `Encrypted Message: ${encryptedMessageString}`;
+        
+        return {
+            encryptedMessage: encryptedMessageString,
+            originalMessage: message.toString(),
+            contractAddress,
+            functionSelector,
+            formattedText
+        };
     } catch (error) {
         console.error('Error encrypting message:', error);
         throw new Error(`Failed to encrypt message: ${error instanceof Error ? error.message : String(error)}`);
@@ -74,7 +88,13 @@ export async function encryptValueHandler(args: Record<string, unknown> | undefi
 
     const results = await performEncryptValue(message, contract_address, function_selector);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            encryptedMessage: results.encryptedMessage,
+            originalMessage: results.originalMessage,
+            contractAddress: results.contractAddress,
+            functionSelector: results.functionSelector
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

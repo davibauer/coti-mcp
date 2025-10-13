@@ -47,7 +47,14 @@ export async function getPrivateERC721TokenOwnerHandler(args: Record<string, unk
 
     const results = await performGetPrivateERC721TokenOwner(token_address, token_id);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            name: results.name,
+            symbol: results.symbol,
+            tokenId: results.tokenId,
+            ownerAddress: results.ownerAddress,
+            tokenAddress: results.tokenAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -56,9 +63,16 @@ export async function getPrivateERC721TokenOwnerHandler(args: Record<string, unk
  * Gets the owner address of a private ERC721 NFT token
  * @param token_address The address of the ERC721 token contract
  * @param token_id The ID of the token to check ownership for
- * @returns A formatted string with the token owner information
+ * @returns An object with token owner information and formatted text
  */
-export async function performGetPrivateERC721TokenOwner(token_address: string, token_id: string) {
+export async function performGetPrivateERC721TokenOwner(token_address: string, token_id: string): Promise<{
+    name: string,
+    symbol: string,
+    tokenId: string,
+    ownerAddress: string,
+    tokenAddress: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -73,7 +87,16 @@ export async function performGetPrivateERC721TokenOwner(token_address: string, t
         
         const ownerAddress = await tokenContract.ownerOf(token_id);
         
-        return `Token: ${name} (${symbol})\nToken ID: ${token_id}\nOwner Address: ${ownerAddress}`;
+        const formattedText = `Token: ${name} (${symbol})\nToken ID: ${token_id}\nOwner Address: ${ownerAddress}`;
+        
+        return {
+            name,
+            symbol,
+            tokenId: token_id,
+            ownerAddress,
+            tokenAddress: token_address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting private ERC721 token owner:', error);
         throw new Error(`Failed to get private ERC721 token owner: ${error instanceof Error ? error.message : String(error)}`);

@@ -54,7 +54,17 @@ export async function approvePrivateERC721Handler(args: Record<string, unknown> 
 
     const results = await performApprovePrivateERC721(token_address, token_id, spender_address, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            tokenAddress: results.tokenAddress,
+            tokenName: results.tokenName,
+            tokenSymbol: results.tokenSymbol,
+            tokenId: results.tokenId,
+            spenderAddress: results.spenderAddress,
+            owner: results.owner,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -65,14 +75,24 @@ export async function approvePrivateERC721Handler(args: Record<string, unknown> 
  * @param token_id The ID of the token to approve for transfer
  * @param spender_address The address to approve as spender
  * @param gas_limit Optional gas limit for the transaction
- * @returns A formatted string with the transaction information
+ * @returns An object with transaction information and formatted text
  */
 export async function performApprovePrivateERC721(
     token_address: string,
     token_id: string,
     spender_address: string,
     gas_limit?: string
-): Promise<any> {
+): Promise<{
+    transactionHash: string,
+    tokenAddress: string,
+    tokenName: string,
+    tokenSymbol: string,
+    tokenId: string,
+    spenderAddress: string,
+    owner: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -101,7 +121,19 @@ export async function performApprovePrivateERC721(
         const tx = await tokenContract.approve(spender_address, token_id, options);
         const receipt = await tx.wait();
         
-        return `Successfully approved ${spender_address} to transfer NFT token ID ${token_id} from ${name} (${symbol}).\nTransaction hash: ${receipt.hash}`;
+        const formattedText = `Successfully approved ${spender_address} to transfer NFT token ID ${token_id} from ${name} (${symbol}).\nTransaction hash: ${receipt.hash}`;
+        
+        return {
+            transactionHash: receipt.hash,
+            tokenAddress: token_address,
+            tokenName: name,
+            tokenSymbol: symbol,
+            tokenId: token_id,
+            spenderAddress: spender_address,
+            owner: wallet.address,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error approving private ERC721 token transfer:', error);
         throw new Error(`Failed to approve private ERC721 token transfer: ${error instanceof Error ? error.message : String(error)}`);

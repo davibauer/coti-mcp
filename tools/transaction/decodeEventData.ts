@@ -37,9 +37,23 @@ export function isDecodeEventDataArgs(args: unknown): args is { topics: string[]
  * @param topics Array of topics from the transaction log.
  * @param data Data field from the transaction log.
  * @param abi Optional JSON string representation of the contract ABI. If not provided, will attempt to use standard ERC20/ERC721 ABIs.
- * @returns The decoded event data.
+ * @returns An object with decoded event data and formatted text.
  */
-export async function performDecodeEventData(topics: string[], data: string, abi?: string): Promise<string> {
+export async function performDecodeEventData(topics: string[], data: string, abi?: string): Promise<{
+    eventName: string,
+    eventSignature: string,
+    eventTopic: string,
+    decodedInputs: Array<{
+        index: number,
+        name: string,
+        type: string,
+        value: any,
+        decryptedValue?: string
+    }>,
+    topics: string[],
+    data: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const currentAccountKeys = getCurrentAccountKeys();
@@ -56,28 +70,55 @@ export async function performDecodeEventData(topics: string[], data: string, abi
         result += "Decoded Data:\n\n";
         
         if (!decodedData) {
-            return "No decoded data found.";
+            const formattedText = "No decoded data found.";
+            return {
+                eventName: '',
+                eventSignature: '',
+                eventTopic: '',
+                decodedInputs: [],
+                topics,
+                data,
+                formattedText
+            };
         }
 
         result += `Event Name: ${decodedData.name}\n\n`;
         result += `Event Signature: ${decodedData.signature}\n\n`;
         result += `Event Topic: ${decodedData.topic}\n\n`;
 
+        const decodedInputs = [];
         for (let index = 0; index < decodedData.fragment.inputs.length; index++) {
             const input = decodedData.fragment.inputs[index];
             const value = decodedData.args[index];
         
             result += `Input ${index}, Name: ${input.name}, Type: ${input.type}, Value: ${value}\n\n`;
         
+            let decryptedValue: string | undefined;
             try {
-                const decryptedValue = await wallet.decryptValue(value);
+                decryptedValue = await wallet.decryptValue(value);
                 result += `Decrypted Value: ${decryptedValue}\n\n`;
             } catch (error) {
                 result += `Decrypted Value: [decryption failed or not applicable]\n\n`;
             }
+            
+            decodedInputs.push({
+                index,
+                name: input.name,
+                type: input.type,
+                value,
+                decryptedValue
+            });
         }
         
-        return result;
+        return {
+            eventName: decodedData.name,
+            eventSignature: decodedData.signature,
+            eventTopic: decodedData.topic,
+            decodedInputs,
+            topics,
+            data,
+            formattedText: result
+        };
     } catch (error) {
         console.error('Error decoding event data:', error);
         throw new Error(`Failed to decode event data: ${error instanceof Error ? error.message : String(error)}`);
@@ -97,7 +138,15 @@ export async function decodeEventDataHandler(args: Record<string, unknown> | und
 
     const results = await performDecodeEventData(topics, data, abi);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            eventName: results.eventName,
+            eventSignature: results.eventSignature,
+            eventTopic: results.eventTopic,
+            decodedInputs: results.decodedInputs,
+            topics: results.topics,
+            data: results.data
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

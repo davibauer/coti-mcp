@@ -28,9 +28,13 @@ export function isGenerateAesKeyArgs(args: unknown): args is { account_address: 
 /**
  * Generates a new AES key for the current account.
  * @param account_address The address of the account to generate the AES key for.
- * @returns The generated AES key.
+ * @returns An object with the generated AES key and formatted text.
  */
-export async function performGenerateAesKey(account_address: string): Promise<string> {
+export async function performGenerateAesKey(account_address: string): Promise<{
+    aesKey: string,
+    address: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getAccountKeys(account_address);
         const provider = getDefaultProvider(getNetwork());
@@ -63,8 +67,14 @@ export async function performGenerateAesKey(account_address: string): Promise<st
 
         process.env.COTI_MCP_AES_KEY = aesKeys.join(',');
 
-        return "AES key: " + aesKey + "\n\n" +
+        const formattedText = "AES key: " + aesKey + "\n\n" +
                "Address: " + wallet.address;
+        
+        return {
+            aesKey,
+            address: wallet.address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error generating AES key:', error);
         throw new Error(`Failed to generate AES key: ${error instanceof Error ? error.message : String(error)}`);
@@ -84,7 +94,11 @@ export async function generateAesKeyHandler(args: Record<string, unknown> | unde
 
     const results = await performGenerateAesKey(account_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            aesKey: results.aesKey,
+            address: results.address
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

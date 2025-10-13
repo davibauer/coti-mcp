@@ -48,7 +48,15 @@ export async function deployPrivateERC721ContractHandler(args: Record<string, un
 
     const results = await performDeployPrivateERC721Contract(name, symbol, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            contractAddress: results.contractAddress,
+            transactionHash: results.transactionHash,
+            name: results.name,
+            symbol: results.symbol,
+            deployer: results.deployer,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -58,9 +66,17 @@ export async function deployPrivateERC721ContractHandler(args: Record<string, un
  * @param name The name of the NFT collection.
  * @param symbol The symbol of the NFT collection (typically 3-5 characters).
  * @param gas_limit Optional gas limit for the deployment transaction.
- * @returns The transaction hash and contract address upon successful deployment.
+ * @returns An object with deployment details and formatted text.
  */
-export async function performDeployPrivateERC721Contract(name: string, symbol: string, gas_limit?: string) {
+export async function performDeployPrivateERC721Contract(name: string, symbol: string, gas_limit?: string): Promise<{
+    contractAddress: string,
+    transactionHash: string,
+    name: string,
+    symbol: string,
+    deployer: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -86,7 +102,17 @@ export async function performDeployPrivateERC721Contract(name: string, symbol: s
         const receipt = await contract.deploymentTransaction();
         const contractAddress = await contract.getAddress();
         
-        return `Private ERC721 Contract Deployment Successful!\nName: ${name}\nSymbol: ${symbol}\nContract Address: ${contractAddress}\nTransaction Hash: ${receipt?.hash}\n\nYou can now use this contract address with other NFT operations.`;
+        const formattedText = `Private ERC721 Contract Deployment Successful!\nName: ${name}\nSymbol: ${symbol}\nContract Address: ${contractAddress}\nTransaction Hash: ${receipt?.hash}\n\nYou can now use this contract address with other NFT operations.`;
+        
+        return {
+            contractAddress,
+            transactionHash: receipt?.hash || '',
+            name,
+            symbol,
+            deployer: wallet.address,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error deploying private ERC721 contract:', error);
         throw new Error(`Failed to deploy private ERC721 contract: ${error instanceof Error ? error.message : String(error)}`);

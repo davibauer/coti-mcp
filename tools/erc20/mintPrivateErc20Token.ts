@@ -51,7 +51,15 @@ export async function mintPrivateERC20TokenHandler(args: Record<string, unknown>
 
     const results = await performMintPrivateERC20Token(token_address, recipient_address, amount_wei, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            tokenAddress: results.tokenAddress,
+            recipientAddress: results.recipientAddress,
+            amountWei: results.amountWei,
+            minter: results.minter,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -62,9 +70,17 @@ export async function mintPrivateERC20TokenHandler(args: Record<string, unknown>
  * @param recipient_address The address of the recipient.
  * @param amount_wei The amount of tokens to mint in wei.
  * @param gas_limit The gas limit for the transaction.
- * @returns A promise that resolves to the transaction hash.
+ * @returns An object with minting details and formatted text.
  */
-export async function performMintPrivateERC20Token(token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string) {
+export async function performMintPrivateERC20Token(token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
+    transactionHash: string,
+    tokenAddress: string,
+    recipientAddress: string,
+    amountWei: string,
+    minter: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -83,7 +99,17 @@ export async function performMintPrivateERC20Token(token_address: string, recipi
 
         const receipt = await mintTx.wait();
         
-        return `ERC20 Token Minting Successful!\nToken Address: ${token_address}\nRecipient: ${recipient_address}\nAmount: ${amount_wei}\nTransaction Hash: ${receipt.hash}`;
+        const formattedText = `ERC20 Token Minting Successful!\nToken Address: ${token_address}\nRecipient: ${recipient_address}\nAmount: ${amount_wei}\nTransaction Hash: ${receipt.hash}`;
+        
+        return {
+            transactionHash: receipt.hash,
+            tokenAddress: token_address,
+            recipientAddress: recipient_address,
+            amountWei: amount_wei,
+            minter: wallet.address,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error minting private ERC20 token:', error);
         throw new Error(`Failed to mint private ERC20 token: ${error instanceof Error ? error.message : String(error)}`);

@@ -23,9 +23,17 @@ export const TRANSFER_NATIVE: ToolAnnotations = {
  * @param recipient_address The recipient COTI address
  * @param amount_wei The amount of COTI to transfer (in Wei)
  * @param gas_limit Optional gas limit for the transaction
- * @returns The transaction hash upon successful transfer
+ * @returns An object with transaction details and formatted text
  */
-export async function performTransferNative(recipient_address: string, amount_wei: string, gas_limit?: string): Promise<string> {
+export async function performTransferNative(recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
+    transactionHash: string,
+    token: string,
+    amountWei: string,
+    recipient: string,
+    sender: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -44,7 +52,17 @@ export async function performTransferNative(recipient_address: string, amount_we
         
         const receipt = await tx.wait();
         
-        return `Transaction successful!\nToken: COTI\nTransaction Hash: ${receipt?.hash}\nAmount in Wei: ${amount_wei}\nRecipient: ${recipient_address}`;
+        const formattedText = `Transaction successful!\nToken: COTI\nTransaction Hash: ${receipt?.hash}\nAmount in Wei: ${amount_wei}\nRecipient: ${recipient_address}`;
+        
+        return {
+            transactionHash: receipt?.hash || '',
+            token: 'COTI',
+            amountWei: amount_wei,
+            recipient: recipient_address,
+            sender: wallet.address,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error transferring COTI tokens:', error);
         throw new Error(`Failed to transfer COTI tokens: ${error instanceof Error ? error.message : String(error)}`);
@@ -81,7 +99,15 @@ export async function transferNativeHandler(args: Record<string, unknown> | unde
 
     const results = await performTransferNative(recipient_address, amount_wei, gas_limit);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            token: results.token,
+            amountWei: results.amountWei,
+            recipient: results.recipient,
+            sender: results.sender,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

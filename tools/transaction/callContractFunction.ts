@@ -43,9 +43,17 @@ export function isCallContractFunctionArgs(args: unknown): args is { contract_ad
  * @param function_name The name of the function to call.
  * @param function_args The arguments to pass to the function.
  * @param abi The ABI of the smart contract.
- * @returns The result of the function call.
+ * @returns An object with function call results and formatted text.
  */
-export async function performCallContractFunction(contract_address: string, function_name: string, function_args: string[], abi?: string): Promise<string> {
+export async function performCallContractFunction(contract_address: string, function_name: string, function_args: string[], abi?: string): Promise<{
+    contractAddress: string,
+    functionName: string,
+    functionArgs: any[],
+    result: any,
+    formattedResult: string,
+    contractType?: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -115,7 +123,24 @@ export async function performCallContractFunction(contract_address: string, func
             formattedResult = String(result);
         }
         
-        return `Function Call Successful!\n\nContract: ${contract_address}\n\nFunction: ${function_name}\n\nArguments: ${JSON.stringify(processedArgs)}\n\nResult: ${formattedResult}`;
+        const formattedText = `Function Call Successful!\n\nContract: ${contract_address}\n\nFunction: ${function_name}\n\nArguments: ${JSON.stringify(processedArgs)}\n\nResult: ${formattedResult}`;
+        
+        let contractType: string | undefined;
+        if (contractAbi === ERC20_ABI) {
+            contractType = 'ERC20';
+        } else if (contractAbi === ERC721_ABI) {
+            contractType = 'ERC721';
+        }
+        
+        return {
+            contractAddress: contract_address,
+            functionName: function_name,
+            functionArgs: processedArgs,
+            result,
+            formattedResult,
+            contractType,
+            formattedText
+        };
     } catch (error) {
         console.error('Error calling contract function:', error);
         throw new Error(`Failed to call contract function: ${error instanceof Error ? error.message : String(error)}`);
@@ -135,7 +160,15 @@ export async function callContractFunctionHandler(args: Record<string, unknown> 
 
     const results = await performCallContractFunction(contract_address, function_name, function_args, abi);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            contractAddress: results.contractAddress,
+            functionName: results.functionName,
+            functionArgs: results.functionArgs,
+            result: results.result,
+            formattedResult: results.formattedResult,
+            contractType: results.contractType
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

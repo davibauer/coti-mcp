@@ -28,9 +28,12 @@ export function isChangeDefaultAccountArgs(args: unknown): args is { account_add
 /**
  * Changes the default account used for COTI blockchain operations.
  * @param account_address The COTI account address to set as default
- * @returns A formatted string with the new default account address
+ * @returns An object with the new default account address and formatted text
  */
-export async function performChangeDefaultAccount(account_address: string) {
+export async function performChangeDefaultAccount(account_address: string): Promise<{
+    newDefaultAccount: string,
+    formattedText: string
+}> {
     try {
         const accountKeys = getAccountKeys(account_address);
         
@@ -40,7 +43,12 @@ export async function performChangeDefaultAccount(account_address: string) {
         
         process.env.COTI_MCP_CURRENT_PUBLIC_KEY = account_address;
         
-        return `Default account successfully changed to: ${account_address}`;
+        const formattedText = `Default account successfully changed to: ${account_address}`;
+        
+        return {
+            newDefaultAccount: account_address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error changing default account:', error);
         throw new Error(`Failed to change default account: ${error instanceof Error ? error.message : String(error)}`);
@@ -60,7 +68,10 @@ export async function changeDefaultAccountHandler(args: Record<string, unknown> 
 
     const results = await performChangeDefaultAccount(account_address);
     return {
-        content: [{ type: "text" as const, text: results }],
+        structuredContent: {
+            newDefaultAccount: results.newDefaultAccount
+        },
+        content: [{ type: "text" as const, text: results.formattedText }],
         isError: false,
     };
 }

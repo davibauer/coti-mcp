@@ -33,16 +33,45 @@ export function isGetTransactionStatusArgs(args: unknown): args is { transaction
 /**
  * Performs the get_transaction_status tool.
  * @param transaction_hash The transaction hash to check status for.
- * @returns Detailed information about the transaction status.
+ * @returns An object with transaction status details and formatted text.
  */
-export async function performGetTransactionStatus(transaction_hash: string): Promise<string> {
+export async function performGetTransactionStatus(transaction_hash: string): Promise<{
+    transactionHash: string,
+    status: string,
+    from: string,
+    to: string,
+    valueEther: string,
+    gasPriceGwei: string,
+    gasLimit: string,
+    gasUsed: string,
+    nonce: number,
+    blockNumber: string,
+    confirmations: string,
+    explorerUrl: string,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const receipt = await provider.getTransactionReceipt(transaction_hash);
         const tx = await provider.getTransaction(transaction_hash);
         
         if (!tx) {
-            return `Transaction Not Found\nTransaction Hash: ${transaction_hash}\nStatus: Unknown (Transaction not found on the blockchain)`;
+            const formattedText = `Transaction Not Found\nTransaction Hash: ${transaction_hash}\nStatus: Unknown (Transaction not found on the blockchain)`;
+            return {
+                transactionHash: transaction_hash,
+                status: 'Not Found',
+                from: '',
+                to: '',
+                valueEther: '0',
+                gasPriceGwei: '0',
+                gasLimit: '0',
+                gasUsed: 'N/A',
+                nonce: 0,
+                blockNumber: 'N/A',
+                confirmations: '0',
+                explorerUrl: '',
+                formattedText
+            };
         }
         
         let status = 'Pending';
@@ -59,22 +88,39 @@ export async function performGetTransactionStatus(transaction_hash: string): Pro
             confirmations = (currentBlock - receipt.blockNumber).toString();
         }
         
-        let result = `Transaction Hash: ${transaction_hash}\n\n`;
-        result += `Status: ${status}\n\n`;
-        result += `From: ${tx.from}\n\n`;
-        result += `To: ${tx.to || 'Contract Creation'}\n\n`;
-        result += `Value: ${ethers.formatEther(tx.value)} COTI\n\n`;
-        result += `Gas Price: ${ethers.formatUnits(tx.gasPrice || 0, 'gwei')} Gwei\n\n`;
-        result += `Gas Limit: ${tx.gasLimit.toString()}\n\n`;
-        result += `Gas Used: ${gasUsed}\n\n`;
-        result += `Nonce: ${tx.nonce}\n\n`;
-        result += `Block Number: ${blockNumber}\n\n`;
-        result += `Confirmations: ${confirmations}\n\n`;
-
+        const valueEther = ethers.formatEther(tx.value);
+        const gasPriceGwei = ethers.formatUnits(tx.gasPrice || 0, 'gwei');
         const network = await provider.getNetwork();
-        result += `https://${network.name === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}\n\n`;
+        const explorerUrl = `https://${network.name === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}`;
         
-        return result;
+        let formattedText = `Transaction Hash: ${transaction_hash}\n\n`;
+        formattedText += `Status: ${status}\n\n`;
+        formattedText += `From: ${tx.from}\n\n`;
+        formattedText += `To: ${tx.to || 'Contract Creation'}\n\n`;
+        formattedText += `Value: ${valueEther} COTI\n\n`;
+        formattedText += `Gas Price: ${gasPriceGwei} Gwei\n\n`;
+        formattedText += `Gas Limit: ${tx.gasLimit.toString()}\n\n`;
+        formattedText += `Gas Used: ${gasUsed}\n\n`;
+        formattedText += `Nonce: ${tx.nonce}\n\n`;
+        formattedText += `Block Number: ${blockNumber}\n\n`;
+        formattedText += `Confirmations: ${confirmations}\n\n`;
+        formattedText += `${explorerUrl}\n\n`;
+        
+        return {
+            transactionHash: transaction_hash,
+            status,
+            from: tx.from,
+            to: tx.to || 'Contract Creation',
+            valueEther,
+            gasPriceGwei,
+            gasLimit: tx.gasLimit.toString(),
+            gasUsed,
+            nonce: tx.nonce,
+            blockNumber,
+            confirmations,
+            explorerUrl,
+            formattedText
+        };
     } catch (error) {
         console.error('Error getting transaction status:', error);
         throw new Error(`Failed to get transaction status: ${error instanceof Error ? error.message : String(error)}`);
@@ -94,7 +140,21 @@ export async function getTransactionStatusHandler(args: Record<string, unknown> 
 
     const results = await performGetTransactionStatus(transaction_hash);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            status: results.status,
+            from: results.from,
+            to: results.to,
+            valueEther: results.valueEther,
+            gasPriceGwei: results.gasPriceGwei,
+            gasLimit: results.gasLimit,
+            gasUsed: results.gasUsed,
+            nonce: results.nonce,
+            blockNumber: results.blockNumber,
+            confirmations: results.confirmations,
+            explorerUrl: results.explorerUrl
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

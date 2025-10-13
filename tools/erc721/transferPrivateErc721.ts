@@ -56,7 +56,18 @@ export async function transferPrivateERC721TokenHandler(args: Record<string, unk
 
     const results = await performTransferPrivateERC721Token(token_address, recipient_address, token_id, use_safe_transfer, gas_limit, from_address);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            transactionHash: results.transactionHash,
+            tokenAddress: results.tokenAddress,
+            tokenName: results.tokenName,
+            tokenSymbol: results.tokenSymbol,
+            tokenId: results.tokenId,
+            fromAddress: results.fromAddress,
+            recipientAddress: results.recipientAddress,
+            transferMethod: results.transferMethod,
+            gasLimit: results.gasLimit
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
@@ -69,9 +80,20 @@ export async function transferPrivateERC721TokenHandler(args: Record<string, unk
  * @param use_safe_transfer Whether to use safeTransferFrom instead of transferFrom
  * @param gas_limit Optional gas limit for the transaction
  * @param from_address Optional address to transfer from. If not provided, the current account will be used
- * @returns A string containing the transaction hash and other information
+ * @returns An object with transfer details and formatted text
  */
-export async function performTransferPrivateERC721Token(token_address: string, recipient_address: string, token_id: string, use_safe_transfer: boolean = false, gas_limit?: string, from_address?: string) {
+export async function performTransferPrivateERC721Token(token_address: string, recipient_address: string, token_id: string, use_safe_transfer: boolean = false, gas_limit?: string, from_address?: string): Promise<{
+    transactionHash: string,
+    tokenAddress: string,
+    tokenName: string,
+    tokenSymbol: string,
+    tokenId: string,
+    fromAddress: string,
+    recipientAddress: string,
+    transferMethod: string,
+    gasLimit?: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -103,7 +125,21 @@ export async function performTransferPrivateERC721Token(token_address: string, r
         
         const receipt = await tx.wait();
         
-        return `Private NFT Transfer Successful!\nToken: ${nameResult} (${symbolResult})\nToken ID: ${token_id}\nTransaction Hash: ${receipt?.hash}\nTransfer Method: ${use_safe_transfer ? 'safeTransferFrom' : 'transferFrom'}\nFrom: ${fromAddress}\nRecipient: ${recipient_address}`;
+        const transferMethod = use_safe_transfer ? 'safeTransferFrom' : 'transferFrom';
+        const formattedText = `Private NFT Transfer Successful!\nToken: ${nameResult} (${symbolResult})\nToken ID: ${token_id}\nTransaction Hash: ${receipt?.hash}\nTransfer Method: ${transferMethod}\nFrom: ${fromAddress}\nRecipient: ${recipient_address}`;
+        
+        return {
+            transactionHash: receipt?.hash || '',
+            tokenAddress: token_address,
+            tokenName: nameResult,
+            tokenSymbol: symbolResult,
+            tokenId: token_id,
+            fromAddress,
+            recipientAddress: recipient_address,
+            transferMethod,
+            gasLimit: gas_limit,
+            formattedText
+        };
     } catch (error) {
         console.error('Error transferring private ERC721 token:', error);
         throw new Error(`Failed to transfer private ERC721 token: ${error instanceof Error ? error.message : String(error)}`);

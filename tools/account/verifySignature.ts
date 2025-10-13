@@ -36,14 +36,28 @@ export function isVerifySignatureArgs(args: unknown): args is { message: string,
  * Verifies a message signature and recovers the address that signed it.
  * @param message The original message that was signed.
  * @param signature The signature to verify.
- * @returns The address that created the signature.
+ * @returns An object with verification results and formatted text.
  */
-export async function performVerifySignature(message: string, signature: string): Promise<string> {
+export async function performVerifySignature(message: string, signature: string): Promise<{
+    message: string,
+    signature: string,
+    signerAddress: string,
+    isValid: boolean,
+    formattedText: string
+}> {
     try {
         // Recover the address from the signature
         const signerAddress = ethers.verifyMessage(message, signature);
         
-        return `Message: "${message}"\nSignature: ${signature}\nSigned by address: ${signerAddress}`;
+        const formattedText = `Message: "${message}"\nSignature: ${signature}\nSigned by address: ${signerAddress}`;
+        
+        return {
+            message,
+            signature,
+            signerAddress,
+            isValid: true,
+            formattedText
+        };
     } catch (error) {
         console.error('Error verifying signature:', error);
         throw new Error(`Failed to verify signature: ${error instanceof Error ? error.message : String(error)}`);
@@ -63,7 +77,13 @@ export async function verifySignatureHandler(args: Record<string, unknown> | und
 
     const results = await performVerifySignature(message, signature);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            message: results.message,
+            signature: results.signature,
+            signerAddress: results.signerAddress,
+            isValid: results.isValid
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

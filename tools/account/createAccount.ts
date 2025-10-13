@@ -30,7 +30,13 @@ export function isCreateAccountArgs(args: unknown): args is { set_as_default?: b
  * @param set_as_default Optional, whether to set the new account as the default account. Default is false.
  * @returns A formatted string with the new account address, private key, and AES key.
  */
-export async function performCreateAccount(set_as_default: boolean = false): Promise<string> {
+export async function performCreateAccount(set_as_default: boolean = false): Promise<{
+    address: string, 
+    privateKey: string, 
+    aesKey: string, 
+    setAsDefault: boolean,
+    formattedText: string
+}> {
     try {
         const provider = getDefaultProvider(getNetwork());
         const newWallet = Wallet.createRandom(provider);
@@ -56,11 +62,19 @@ export async function performCreateAccount(set_as_default: boolean = false): Pro
             process.env.COTI_MCP_CURRENT_PUBLIC_KEY = address;
         }
         
-        return `New COTI account created successfully!\n\n` +
+         const formattedText = `New COTI account created successfully!\n\n` +
                `Address: ${address}\n\n` +
                `Private Key: ${privateKey}\n\n` +
                `AES Key: ${aesKey}\n\n` +
                `${set_as_default ? 'Set as default account.' : 'Not set as default account.'}`;
+
+        return {
+            address,
+            privateKey, 
+            aesKey,
+            setAsDefault: set_as_default,
+            formattedText
+        };
     } catch (error) {
         console.error('Error creating new account:', error);
         throw new Error(`Failed to create new account: ${error instanceof Error ? error.message : String(error)}`);
@@ -80,7 +94,13 @@ export async function createAccountHandler(args: any): Promise<any> {
 
     const results = await performCreateAccount(set_as_default || false);
     return {
-        content: [{ type: "text", text: results }],
+         structuredContent: {
+            address: results.address,
+            privateKey: results.privateKey,
+            aesKey: results.aesKey,
+            setAsDefault: results.setAsDefault
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }

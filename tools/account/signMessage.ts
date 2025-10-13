@@ -33,9 +33,14 @@ export function isSignMessageArgs(args: unknown): args is { message: string } {
 /**
  * Signs a message using the COTI private key.
  * @param message The message to sign.
- * @returns The signature.
+ * @returns An object with the signature and formatted text.
  */
-export async function performSignMessage(message: string): Promise<string> {
+export async function performSignMessage(message: string): Promise<{
+    message: string,
+    signature: string,
+    signerAddress: string,
+    formattedText: string
+}> {
     try {
         const currentAccountKeys = getCurrentAccountKeys();
         const provider = getDefaultProvider(getNetwork());
@@ -44,7 +49,14 @@ export async function performSignMessage(message: string): Promise<string> {
         // Sign the message
         const signature = await wallet.signMessage(message);
         
-        return `Message: "${message}"\nSignature: ${signature}`;
+        const formattedText = `Message: "${message}"\nSignature: ${signature}`;
+        
+        return {
+            message,
+            signature,
+            signerAddress: wallet.address,
+            formattedText
+        };
     } catch (error) {
         console.error('Error signing message:', error);
         throw new Error(`Failed to sign message: ${error instanceof Error ? error.message : String(error)}`);
@@ -64,7 +76,12 @@ export async function signMessageHandler(args: Record<string, unknown> | undefin
 
     const results = await performSignMessage(message);
     return {
-        content: [{ type: "text", text: results }],
+        structuredContent: {
+            message: results.message,
+            signature: results.signature,
+            signerAddress: results.signerAddress
+        },
+        content: [{ type: "text", text: results.formattedText }],
         isError: false,
     };
 }
