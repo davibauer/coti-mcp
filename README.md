@@ -107,7 +107,7 @@ npm run build
 
 **Smithery**
 ```bash
-npx -y @smithery/cli install @davibauer/coti-mcp --client claude
+npx -y @smithery/cli install @davibauer/coti-mcp
 ```
 
 **Local Configuration**
