@@ -16,6 +16,7 @@ import { EXPORT_ACCOUNTS, exportAccountsHandler } from "./tools/account/exportAc
 import { GENERATE_AES_KEY, generateAesKeyHandler } from "./tools/account/generateAesKey.js";
 import { GET_CURRENT_NETWORK, getCurrentNetworkHandler } from './tools/account/getCurrentNetwork.js';
 import { IMPORT_ACCOUNTS, importAccountsHandler } from "./tools/account/importAccounts.js";
+import { IMPORT_ACCOUNT_FROM_PRIVATE_KEY, importAccountFromPrivateKeyHandler } from "./tools/account/importAccountFromPrivateKey.js";
 import { LIST_ACCOUNTS, listAccountsHandler } from "./tools/account/listAccounts.js";
 import { SIGN_MESSAGE, signMessageHandler } from "./tools/account/signMessage.js";
 import { SWITCH_NETWORK, switchNetworkHandler } from "./tools/account/switchNetwork.js";
@@ -57,6 +58,10 @@ import { CALL_CONTRACT_FUNCTION, callContractFunctionHandler } from "./tools/tra
 import { DECODE_EVENT_DATA, decodeEventDataHandler } from "./tools/transaction/decodeEventData.js";
 import { GET_TRANSACTION_LOGS, getTransactionLogsHandler } from "./tools/transaction/getTransactionLogs.js";
 import { GET_TRANSACTION_STATUS, getTransactionStatusHandler } from "./tools/transaction/getTransactionStatus.js";
+
+// Session Tools
+
+import { GET_SESSION_INFO, getSessionInfoHandler } from "./tools/session/getSessionInfo.js";
 
 export const configSchema = z.object({
   debug: z.boolean().default(false).describe("Enable debug logging"),
@@ -156,6 +161,11 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
   server.registerTool("import_accounts",
     IMPORT_ACCOUNTS,
     withSession(importAccountsHandler)
+  );
+
+  server.registerTool("import_account_from_private_key",
+    IMPORT_ACCOUNT_FROM_PRIVATE_KEY,
+    withSession(importAccountFromPrivateKeyHandler)
   );
 
   server.registerTool("list_accounts",
@@ -309,6 +319,13 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
   server.registerTool("transfer_native",
     TRANSFER_NATIVE,
     withSession(transferNativeHandler)
+  );
+
+  // Session Tools
+
+  server.registerTool("get_session_info",
+    GET_SESSION_INFO,
+    withSession(getSessionInfoHandler)
   );
 
   return server.server;
