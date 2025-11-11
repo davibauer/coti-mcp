@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const SIGN_MESSAGE: ToolAnnotations = {
     title: "Sign Message",
@@ -35,15 +36,15 @@ export function isSignMessageArgs(args: unknown): args is { message: string } {
  * @param message The message to sign.
  * @returns An object with the signature and formatted text.
  */
-export async function performSignMessage(message: string): Promise<{
+export async function performSignMessage(session: SessionContext, message: string): Promise<{
     message: string,
     signature: string,
     signerAddress: string,
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         // Sign the message
@@ -68,13 +69,13 @@ export async function performSignMessage(message: string): Promise<{
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function signMessageHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function signMessageHandler(session: SessionContext, args: any): Promise<any> {
     if (!isSignMessageArgs(args)) {
         throw new Error("Invalid arguments for sign_message");
     }
     const { message } = args;
 
-    const results = await performSignMessage(message);
+    const results = await performSignMessage(session, message);
     return {
         structuredContent: {
             message: results.message,

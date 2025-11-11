@@ -1,6 +1,7 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getAccountKeys } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const CHANGE_DEFAULT_ACCOUNT: ToolAnnotations = {
     title: "Change Default Account",
@@ -30,18 +31,18 @@ export function isChangeDefaultAccountArgs(args: unknown): args is { account_add
  * @param account_address The COTI account address to set as default
  * @returns An object with the new default account address and formatted text
  */
-export async function performChangeDefaultAccount(account_address: string): Promise<{
+export async function performChangeDefaultAccount(session: SessionContext, account_address: string): Promise<{
     newDefaultAccount: string,
     formattedText: string
 }> {
     try {
-        const accountKeys = getAccountKeys(account_address);
+        const accountKeys = getAccountKeys(session, account_address);
         
         if (!accountKeys) {
             throw new Error(`Account ${account_address} not found`);
         }
         
-        process.env.COTI_MCP_CURRENT_PUBLIC_KEY = account_address;
+        session.storage.set(SessionKeys.CURRENT_PUBLIC_KEY, account_address);
         
         const formattedText = `Default account successfully changed to: ${account_address}`;
         
@@ -60,13 +61,13 @@ export async function performChangeDefaultAccount(account_address: string): Prom
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function changeDefaultAccountHandler(args: Record<string, unknown> | undefined) {
+export async function changeDefaultAccountHandler(session: SessionContext, args: any) {
     if (!isChangeDefaultAccountArgs(args)) {
         throw new Error("Invalid arguments for change_default_account");
     }
     const { account_address } = args;
 
-    const results = await performChangeDefaultAccount(account_address);
+    const results = await performChangeDefaultAccount(session, account_address);
     return {
         structuredContent: {
             newDefaultAccount: results.newDefaultAccount

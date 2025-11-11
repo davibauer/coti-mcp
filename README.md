@@ -36,6 +36,42 @@ A Model Context Protocol (MCP) server that enables AI applications to interact w
 - Full privacy support through MPC technology
 - Secure transaction processing and message signing
 
+## Multi-User Architecture
+
+The COTI MCP Server now supports multiple concurrent users connecting to the same server instance with complete data isolation. Each connection maintains its own isolated session with separate account storage, ensuring that users cannot access each other's private keys, accounts, or configuration.
+
+### Key Security Features
+
+- **Per-Connection Session Isolation**: Each MCP connection receives a unique session ID and isolated storage
+- **Private Key Protection**: Private keys, AES keys, and account data are never shared between sessions
+- **Session-Scoped Configuration**: Network settings and default accounts are maintained per-session
+- **Automatic Session Management**: Sessions are automatically created on connection and cleaned up on disconnect
+
+### How It Works
+
+When a user connects to the MCP server:
+
+1. The MCP SDK automatically provides a unique `sessionId` for each connection
+2. The server creates an isolated `SessionStorage` instance for that session
+3. All tool operations (create account, import accounts, etc.) access only that session's storage
+4. When the connection closes, the session and its data are automatically destroyed
+
+### Security Implications
+
+- **No Global State**: The server no longer uses `process.env` for storing user-specific data
+- **Memory Isolation**: Each session's data is completely isolated in memory
+- **Clean Separation**: Multiple users (or multiple Claude instances) can safely connect simultaneously
+- **Zero Cross-Contamination**: User A creating an account is invisible to User B
+
+### Migration Notes
+
+If you previously configured accounts via environment variables, they will no longer be automatically available to new sessions. You will need to:
+
+1. Use `create_account` tool to create new accounts per session, OR
+2. Use `import_accounts` tool to import your existing account backup per session
+
+Environment variables are now only used for global configuration (like default network), not for storing user-specific account data.
+
 ## Available Tools
 
 **Account Management (12 tools)**
@@ -100,7 +136,7 @@ A Model Context Protocol (MCP) server that enables AI applications to interact w
 git clone https://github.com/davibauer/coti-mcp.git
 cd coti-mcp
 npm install
-npm run build
+npm run dev
 ```
 
 ### Distribution
@@ -121,28 +157,26 @@ Add to your Claude desktop configuration:
       "command": "node",
       "args": ["path/to/build/index.js"],
       "env": {
-        "COTI_MCP_AES_KEY": "your_aes_key_here",
-        "COTI_MCP_PUBLIC_KEY": "your_public_key_here",
-        "COTI_MCP_PRIVATE_KEY": "your_private_key_here",
-        "COTI_MCP_CURRENT_PUBLIC_KEY": "current_account_public_key"
+        "COTI_MCP_NETWORK": "testnet"
       }
     }
   }
 }
 ```
 
+After connecting, use the account management tools to create or import accounts:
+- `create_account` - Create a new account
+- `import_accounts` - Import from a backup file
+
 **Multi-Account Support**
 
-Configure multiple accounts using comma-separated values:
+Each session can manage multiple accounts using the account management tools:
+- Use `create_account` to create new accounts
+- Use `import_accounts` to import account configurations
+- Use `list_accounts` to view all accounts in your session
+- Use `change_default_account` to switch between accounts
 
-```json
-"env": {
-  "COTI_MCP_AES_KEY": "key1,key2,key3",
-  "COTI_MCP_PUBLIC_KEY": "pub1,pub2,pub3",
-  "COTI_MCP_PRIVATE_KEY": "priv1,priv2,priv3",
-  "COTI_MCP_CURRENT_PUBLIC_KEY": "pub1"
-}
-```
+Note: Due to the new multi-user architecture, accounts are no longer configured via environment variables. Instead, accounts are managed per-session using the account management tools.
 
 ## Resources
 

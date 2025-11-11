@@ -3,6 +3,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const APPROVE_PRIVATE_ERC721: ToolAnnotations = {
     title: "Approve Private ERC721",
@@ -46,13 +47,13 @@ export function isApprovePrivateERC721Args(
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function approvePrivateERC721Handler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function approvePrivateERC721Handler(session: SessionContext, args: any): Promise<any> {
     if (!isApprovePrivateERC721Args(args)) {
         throw new Error("Invalid arguments for approve_private_erc721");
     }
     const { token_address, token_id, spender_address, gas_limit } = args;
 
-    const results = await performApprovePrivateERC721(token_address, token_id, spender_address, gas_limit);
+    const results = await performApprovePrivateERC721(session, token_address, token_id, spender_address, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -77,12 +78,10 @@ export async function approvePrivateERC721Handler(args: Record<string, unknown> 
  * @param gas_limit Optional gas limit for the transaction
  * @returns An object with transaction information and formatted text
  */
-export async function performApprovePrivateERC721(
-    token_address: string,
+export async function performApprovePrivateERC721(session: SessionContext, token_address: string,
     token_id: string,
     spender_address: string,
-    gas_limit?: string
-): Promise<{
+    gas_limit?: string): Promise<{
     transactionHash: string,
     tokenAddress: string,
     tokenName: string,
@@ -94,8 +93,8 @@ export async function performApprovePrivateERC721(
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
-        const currentAccountKeys = getCurrentAccountKeys();
+        const provider = getDefaultProvider(getNetwork(session));
+        const currentAccountKeys = getCurrentAccountKeys(session);
         
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         wallet.setAesKey(currentAccountKeys.aesKey);

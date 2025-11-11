@@ -4,6 +4,7 @@ import { buildInputText } from '@coti-io/coti-sdk-typescript';
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 /**
  * Tool definition for transferring private ERC20 tokens on the COTI blockchain
@@ -47,13 +48,13 @@ export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function transferPrivateERC20TokenHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function transferPrivateERC20TokenHandler(session: SessionContext, args: any): Promise<any> {
     if (!isTransferPrivateERC20TokenArgs(args)) {
         throw new Error("Invalid arguments for transfer_private_erc20");
     }
     const { token_address, recipient_address, amount_wei, gas_limit } = args;
 
-    const results = await performTransferPrivateERC20Token(token_address, recipient_address, amount_wei, gas_limit);
+    const results = await performTransferPrivateERC20Token(session, token_address, recipient_address, amount_wei, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -78,7 +79,7 @@ export async function transferPrivateERC20TokenHandler(args: Record<string, unkn
  * @param gas_limit - Optional gas limit for the transaction
  * @returns An object with transfer details and formatted text
  */
-export async function performTransferPrivateERC20Token(token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
+export async function performTransferPrivateERC20Token(session: SessionContext, token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
     transactionHash: string,
     tokenSymbol: string,
     tokenAddress: string,
@@ -90,8 +91,8 @@ export async function performTransferPrivateERC20Token(token_address: string, re
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);

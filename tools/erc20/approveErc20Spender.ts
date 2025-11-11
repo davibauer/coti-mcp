@@ -4,6 +4,7 @@ import { buildInputText } from '@coti-io/coti-sdk-typescript';
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 /**
  * Tool definition for approving a spender to use ERC20 tokens on the COTI blockchain
@@ -48,13 +49,13 @@ export function isApproveERC20SpenderArgs(args: unknown): args is { token_addres
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function approveERC20SpenderHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function approveERC20SpenderHandler(session: SessionContext, args: any): Promise<any> {
     if (!isApproveERC20SpenderArgs(args)) {
         throw new Error("Invalid arguments for approve_erc20_spender");
     }
     const { token_address, spender_address, amount_wei, gas_limit } = args;
 
-    const results = await performApproveERC20Spender(token_address, spender_address, amount_wei, gas_limit);
+    const results = await performApproveERC20Spender(session, token_address, spender_address, amount_wei, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -78,7 +79,7 @@ export async function approveERC20SpenderHandler(args: Record<string, unknown> |
  * @param gas_limit - Optional gas limit for the transaction
  * @returns An object with approval details and formatted text
  */
-export async function performApproveERC20Spender(token_address: string, spender_address: string, amount_wei: string, gas_limit?: string): Promise<{
+export async function performApproveERC20Spender(session: SessionContext, token_address: string, spender_address: string, amount_wei: string, gas_limit?: string): Promise<{
     transactionHash: string,
     tokenSymbol: string,
     tokenAddress: string,
@@ -89,8 +90,8 @@ export async function performApproveERC20Spender(token_address: string, spender_
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);

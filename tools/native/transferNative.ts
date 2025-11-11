@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, Wallet } from '@coti-io/coti-ethers';
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const TRANSFER_NATIVE: ToolAnnotations = {
     title: "Transfer Native",
@@ -25,7 +26,7 @@ export const TRANSFER_NATIVE: ToolAnnotations = {
  * @param gas_limit Optional gas limit for the transaction
  * @returns An object with transaction details and formatted text
  */
-export async function performTransferNative(recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
+export async function performTransferNative(session: SessionContext, recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
     transactionHash: string,
     token: string,
     amountWei: string,
@@ -35,8 +36,8 @@ export async function performTransferNative(recipient_address: string, amount_we
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         const txOptions: any = {};
@@ -91,13 +92,13 @@ export function isTransferNativeArgs(args: unknown): args is { recipient_address
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function transferNativeHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function transferNativeHandler(session: SessionContext, args: any): Promise<any> {
     if (!isTransferNativeArgs(args)) {
         throw new Error("Invalid arguments for transfer_native");
     }
     const { recipient_address, amount_wei, gas_limit } = args;
 
-    const results = await performTransferNative(recipient_address, amount_wei, gas_limit);
+    const results = await performTransferNative(session, recipient_address, amount_wei, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,

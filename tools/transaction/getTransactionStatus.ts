@@ -2,6 +2,7 @@ import { ethers, getDefaultProvider } from "@coti-io/coti-ethers";
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_TRANSACTION_STATUS: ToolAnnotations = {
     title: "Get Transaction Status",
@@ -35,7 +36,7 @@ export function isGetTransactionStatusArgs(args: unknown): args is { transaction
  * @param transaction_hash The transaction hash to check status for.
  * @returns An object with transaction status details and formatted text.
  */
-export async function performGetTransactionStatus(transaction_hash: string): Promise<{
+export async function performGetTransactionStatus(session: SessionContext, transaction_hash: string): Promise<{
     transactionHash: string,
     status: string,
     from: string,
@@ -51,7 +52,7 @@ export async function performGetTransactionStatus(transaction_hash: string): Pro
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
+        const provider = getDefaultProvider(getNetwork(session));
         const receipt = await provider.getTransactionReceipt(transaction_hash);
         const tx = await provider.getTransaction(transaction_hash);
         
@@ -132,13 +133,13 @@ export async function performGetTransactionStatus(transaction_hash: string): Pro
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getTransactionStatusHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function getTransactionStatusHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGetTransactionStatusArgs(args)) {
         throw new Error("Invalid arguments for get_transaction_status");
     }
     const { transaction_hash } = args;
 
-    const results = await performGetTransactionStatus(transaction_hash);
+    const results = await performGetTransactionStatus(session, transaction_hash);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,

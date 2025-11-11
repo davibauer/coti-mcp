@@ -3,6 +3,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, ethers } from "@coti-io/coti-ethers";
 import { ERC20_ABI, ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const DECODE_EVENT_DATA: ToolAnnotations = {
     title: "Decode Event Data",
@@ -39,7 +40,7 @@ export function isDecodeEventDataArgs(args: unknown): args is { topics: string[]
  * @param abi Optional JSON string representation of the contract ABI. If not provided, will attempt to use standard ERC20/ERC721 ABIs.
  * @returns An object with decoded event data and formatted text.
  */
-export async function performDecodeEventData(topics: string[], data: string, abi?: string): Promise<{
+export async function performDecodeEventData(session: SessionContext, topics: string[], data: string, abi?: string): Promise<{
     eventName: string,
     eventSignature: string,
     eventTopic: string,
@@ -55,8 +56,8 @@ export async function performDecodeEventData(topics: string[], data: string, abi
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
-        const currentAccountKeys = getCurrentAccountKeys();
+        const provider = getDefaultProvider(getNetwork(session));
+        const currentAccountKeys = getCurrentAccountKeys(session);
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         const standardAbis = [...ERC20_ABI, ...ERC721_ABI];
         
@@ -95,17 +96,18 @@ export async function performDecodeEventData(topics: string[], data: string, abi
         
             let decryptedValue: string | undefined;
             try {
-                decryptedValue = await wallet.decryptValue(value);
+                const decrypted = await wallet.decryptValue(value);
+                decryptedValue = typeof decrypted === 'bigint' ? decrypted.toString() : decrypted;
                 result += `Decrypted Value: ${decryptedValue}\n\n`;
             } catch (error) {
                 result += `Decrypted Value: [decryption failed or not applicable]\n\n`;
             }
-            
+
             decodedInputs.push({
                 index,
                 name: input.name,
                 type: input.type,
-                value,
+                value: typeof value === 'bigint' ? value.toString() : String(value),
                 decryptedValue
             });
         }
@@ -130,13 +132,13 @@ export async function performDecodeEventData(topics: string[], data: string, abi
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function decodeEventDataHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function decodeEventDataHandler(session: SessionContext, args: any): Promise<any> {
     if (!isDecodeEventDataArgs(args)) {
         throw new Error("Invalid arguments for decode_event_data");
     }
     const { topics, data, abi } = args;
 
-    const results = await performDecodeEventData(topics, data, abi);
+    const results = await performDecodeEventData(session, topics, data, abi);
     return {
         structuredContent: {
             eventName: results.eventName,

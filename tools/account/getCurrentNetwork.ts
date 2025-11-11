@@ -1,4 +1,5 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_CURRENT_NETWORK: ToolAnnotations = {
     title: "Get Current Network",
@@ -11,12 +12,12 @@ export const GET_CURRENT_NETWORK: ToolAnnotations = {
  * Gets the currently configured COTI network.
  * @returns An object with the current network and formatted text
  */
-export async function performGetCurrentNetwork(): Promise<{
+export async function performGetCurrentNetwork(session: SessionContext): Promise<{
     network: string,
     formattedText: string
 }> {
     try {
-        const network = process.env.COTI_MCP_NETWORK?.toLowerCase() || 'testnet';
+        const network = session.storage.get(SessionKeys.NETWORK)?.toLowerCase() || 'testnet';
         
         const formattedText = `Current network: ${network}`;
         
@@ -35,8 +36,8 @@ export async function performGetCurrentNetwork(): Promise<{
  * @param args The arguments for the tool (none required)
  * @returns The tool response
  */
-export async function getCurrentNetworkHandler(args: Record<string, unknown> | undefined) {
-    const results = await performGetCurrentNetwork();
+export async function getCurrentNetworkHandler(session: SessionContext, args: any) {
+    const results = await performGetCurrentNetwork(session);
     return {
         structuredContent: {
             network: results.network

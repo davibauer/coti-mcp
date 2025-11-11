@@ -3,6 +3,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_PRIVATE_ERC721_IS_APPROVED_FOR_ALL: ToolAnnotations = {
     title: "Get Private ERC721 Is Approved For All",
@@ -44,13 +45,13 @@ export function isGetPrivateERC721IsApprovedForAllArgs(
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getPrivateERC721IsApprovedForAllHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function getPrivateERC721IsApprovedForAllHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGetPrivateERC721IsApprovedForAllArgs(args)) {
         throw new Error("Invalid arguments for get_private_erc721_is_approved_for_all");
     }
     const { token_address, owner_address, operator_address } = args;
 
-    const results = await performGetPrivateERC721IsApprovedForAll(token_address, owner_address, operator_address);
+    const results = await performGetPrivateERC721IsApprovedForAll(session, token_address, owner_address, operator_address);
     return {
         structuredContent: {
             name: results.name,
@@ -72,11 +73,9 @@ export async function getPrivateERC721IsApprovedForAllHandler(args: Record<strin
  * @param operator_address The address of the operator to check approval for
  * @returns An object with approval information and formatted text
  */
-export async function performGetPrivateERC721IsApprovedForAll(
-    token_address: string,
+export async function performGetPrivateERC721IsApprovedForAll(session: SessionContext, token_address: string,
     owner_address: string,
-    operator_address: string
-): Promise<{
+    operator_address: string): Promise<{
     name: string,
     symbol: string,
     ownerAddress: string,
@@ -86,8 +85,8 @@ export async function performGetPrivateERC721IsApprovedForAll(
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
-        const currentAccountKeys = getCurrentAccountKeys();
+        const provider = getDefaultProvider(getNetwork(session));
+        const currentAccountKeys = getCurrentAccountKeys(session);
         
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         wallet.setAesKey(currentAccountKeys.aesKey);

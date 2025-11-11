@@ -1,5 +1,6 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const EXPORT_ACCOUNTS: ToolAnnotations = {
     title: "Export accounts",
@@ -46,7 +47,7 @@ function isExportAccountsArgs(args: Record<string, unknown> | undefined): args i
  * @param args The arguments for the export
  * @returns An object with the exported accounts data and formatted text
  */
-export async function performExportAccounts(args: ExportAccountsArgs): Promise<{
+export async function performExportAccounts(session: SessionContext, args: ExportAccountsArgs): Promise<{
     timestamp: string,
     accounts: Array<{
         address: string,
@@ -63,10 +64,10 @@ export async function performExportAccounts(args: ExportAccountsArgs): Promise<{
         const includeSensitiveData = args.include_sensitive_data !== false; // Default to true if not specified
         const specificAddresses = args.account_addresses || [];
         
-        const publicKeys = (process.env.COTI_MCP_PUBLIC_KEY || '').split(',').filter(Boolean);
-        const privateKeys = (process.env.COTI_MCP_PRIVATE_KEY || '').split(',').filter(Boolean);
-        const aesKeys = (process.env.COTI_MCP_AES_KEY || '').split(',').filter(Boolean);
-        const currentAccount = process.env.COTI_MCP_CURRENT_PUBLIC_KEY || publicKeys[0] || '';
+        const publicKeys = (session.storage.get(SessionKeys.PUBLIC_KEYS) || '').split(',').filter(Boolean);
+        const privateKeys = (session.storage.get(SessionKeys.PRIVATE_KEYS) || '').split(',').filter(Boolean);
+        const aesKeys = (session.storage.get(SessionKeys.AES_KEYS) || '').split(',').filter(Boolean);
+        const currentAccount = session.storage.get(SessionKeys.CURRENT_PUBLIC_KEY) || publicKeys[0] || '';
         
         if (publicKeys.length === 0) {
             const formattedText = "No COTI accounts configured in the environment. Nothing to export.";
@@ -152,7 +153,7 @@ export async function performExportAccounts(args: ExportAccountsArgs): Promise<{
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function exportAccountsHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function exportAccountsHandler(session: SessionContext, args: any): Promise<any> {
     if (!isExportAccountsArgs(args)) {
         return {
             content: [{ type: "text", text: "Invalid arguments provided." }],
@@ -161,7 +162,7 @@ export async function exportAccountsHandler(args: Record<string, unknown> | unde
     }
     
     try {
-        const results = await performExportAccounts(args || {});
+        const results = await performExportAccounts(session, args || {});
         return {
             structuredContent: {
                 timestamp: results.timestamp,

@@ -1,5 +1,6 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const IMPORT_ACCOUNTS: ToolAnnotations = {
     title: "Import Accounts",
@@ -99,7 +100,7 @@ function parseBackupData(backupData: string): BackupData {
  * @param args The arguments for the import
  * @returns An object with the import results and formatted text
  */
-export async function performImportAccounts(args: ImportAccountsArgs): Promise<{
+export async function performImportAccounts(session: SessionContext, args: ImportAccountsArgs): Promise<{
     importedAccounts: number,
     totalAccounts: number,
     mergedWithExisting: boolean,
@@ -114,10 +115,10 @@ export async function performImportAccounts(args: ImportAccountsArgs): Promise<{
         const backupData = parseBackupData(args.backup_data);
         
         // Get existing account data
-        const existingPublicKeys = (process.env.COTI_MCP_PUBLIC_KEY || '').split(',').filter(Boolean);
-        const existingPrivateKeys = (process.env.COTI_MCP_PRIVATE_KEY || '').split(',').filter(Boolean);
-        const existingAesKeys = (process.env.COTI_MCP_AES_KEY || '').split(',').filter(Boolean);
-        const currentAccount = process.env.COTI_MCP_CURRENT_PUBLIC_KEY || existingPublicKeys[0] || '';
+        const existingPublicKeys = (session.storage.get(SessionKeys.PUBLIC_KEYS) || '').split(',').filter(Boolean);
+        const existingPrivateKeys = (session.storage.get(SessionKeys.PRIVATE_KEYS) || '').split(',').filter(Boolean);
+        const existingAesKeys = (session.storage.get(SessionKeys.AES_KEYS) || '').split(',').filter(Boolean);
+        const currentAccount = session.storage.get(SessionKeys.CURRENT_PUBLIC_KEY) || existingPublicKeys[0] || '';
         
         // Prepare new account data
         let newPublicKeys: string[] = [];
@@ -171,13 +172,13 @@ export async function performImportAccounts(args: ImportAccountsArgs): Promise<{
         }
         
         // Update environment variables
-        process.env.COTI_MCP_PUBLIC_KEY = newPublicKeys.join(',');
-        process.env.COTI_MCP_PRIVATE_KEY = newPrivateKeys.join(',');
-        process.env.COTI_MCP_AES_KEY = newAesKeys.join(',');
+        session.storage.set(SessionKeys.PUBLIC_KEYS, newPublicKeys.join(','));
+        session.storage.set(SessionKeys.PRIVATE_KEYS, newPrivateKeys.join(','));
+        session.storage.set(SessionKeys.AES_KEYS, newAesKeys.join(','));
         
         // Set default account if specified
         if (newDefaultAccount) {
-            process.env.COTI_MCP_CURRENT_PUBLIC_KEY = newDefaultAccount;
+            session.storage.set(SessionKeys.CURRENT_PUBLIC_KEY, newDefaultAccount);
         }
         
         // Generate result message
@@ -189,14 +190,14 @@ export async function performImportAccounts(args: ImportAccountsArgs): Promise<{
             formattedText += `Replaced existing accounts. Total accounts now: ${newPublicKeys.length}.\n\n`;
         }
         
-        formattedText += `Default account set to: ${process.env.COTI_MCP_CURRENT_PUBLIC_KEY}\n\n`;
+        formattedText += `Default account set to: ${session.storage.get(SessionKeys.CURRENT_PUBLIC_KEY)}\n\n`;
         formattedText += `Note: These changes are only active for the current session. To make them permanent, you need to update your environment variables.`;
         
         return {
             importedAccounts: backupData.accounts.length,
             totalAccounts: newPublicKeys.length,
-            mergeWithExisting,
-            defaultAccount: process.env.COTI_MCP_CURRENT_PUBLIC_KEY || '',
+            mergedWithExisting: mergeWithExisting,
+            defaultAccount: session.storage.get(SessionKeys.CURRENT_PUBLIC_KEY) || '',
             accountAddresses: newPublicKeys,
             formattedText
         };
@@ -211,7 +212,7 @@ export async function performImportAccounts(args: ImportAccountsArgs): Promise<{
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function importAccountsHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function importAccountsHandler(session: SessionContext, args: any): Promise<any> {
     if (!isImportAccountsArgs(args)) {
         return {
             content: [{ type: "text", text: "Invalid arguments provided. The 'backup_data' parameter is required and must be a valid JSON string." }],
@@ -220,7 +221,7 @@ export async function importAccountsHandler(args: Record<string, unknown> | unde
     }
     
     try {
-        const results = await performImportAccounts(args);
+        const results = await performImportAccounts(session, args);
         return {
             structuredContent: {
                 importedAccounts: results.importedAccounts,

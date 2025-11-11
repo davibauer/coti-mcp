@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_TRANSACTION_LOGS: ToolAnnotations = {
     title: "Get Transaction Logs",
@@ -35,7 +36,7 @@ export function isGetTransactionLogsArgs(args: unknown): args is { transaction_h
  * @param transaction_hash The hash of the transaction to get logs for
  * @returns An object with transaction logs and formatted text
  */
-export async function performGetTransactionLogs(transaction_hash: string): Promise<{
+export async function performGetTransactionLogs(session: SessionContext, transaction_hash: string): Promise<{
     transactionHash: string,
     totalLogs: number,
     logs: Array<{
@@ -53,7 +54,7 @@ export async function performGetTransactionLogs(transaction_hash: string): Promi
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
+        const provider = getDefaultProvider(getNetwork(session));
         let receipt;
         try {
             receipt = await provider.getTransactionReceipt(transaction_hash);
@@ -125,7 +126,7 @@ export async function performGetTransactionLogs(transaction_hash: string): Promi
                 transactionIndex: log.transactionIndex,
                 logIndex: log.index !== undefined ? log.index : 'N/A',
                 removed: log.removed !== undefined ? log.removed : false,
-                topics: log.topics,
+                topics: [...log.topics],
                 data: log.data,
                 eventSignature
             };
@@ -152,13 +153,13 @@ export async function performGetTransactionLogs(transaction_hash: string): Promi
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getTransactionLogsHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function getTransactionLogsHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGetTransactionLogsArgs(args)) {
         throw new Error("Invalid arguments for get_transaction_logs");
     }
     const { transaction_hash } = args;
 
-    const results = await performGetTransactionLogs(transaction_hash);
+    const results = await performGetTransactionLogs(session, transaction_hash);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,

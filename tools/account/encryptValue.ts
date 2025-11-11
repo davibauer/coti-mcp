@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const ENCRYPT_VALUE: ToolAnnotations = {
     title: "Encrypt Value",
@@ -43,7 +44,7 @@ export function isEncryptValueArgs(args: unknown): args is { message: string, co
  * @param functionSelector The function selector.
  * @returns An object with the encrypted message and formatted text.
  */
-export async function performEncryptValue(message: bigint | number | string, contractAddress: string, functionSelector: string): Promise<{
+export async function performEncryptValue(session: SessionContext, message: bigint | number | string, contractAddress: string, functionSelector: string): Promise<{
     encryptedMessage: string,
     originalMessage: string,
     contractAddress: string,
@@ -51,8 +52,8 @@ export async function performEncryptValue(message: bigint | number | string, con
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         const encryptedMessage = await wallet.encryptValue(message, contractAddress, functionSelector);
@@ -80,13 +81,13 @@ export async function performEncryptValue(message: bigint | number | string, con
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function encryptValueHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function encryptValueHandler(session: SessionContext, args: any): Promise<any> {
     if (!isEncryptValueArgs(args)) {
         throw new Error("Invalid arguments for encrypt_value");
     }
     const { message, contract_address, function_selector } = args;
 
-    const results = await performEncryptValue(message, contract_address, function_selector);
+    const results = await performEncryptValue(session, message, contract_address, function_selector);
     return {
         structuredContent: {
             encryptedMessage: results.encryptedMessage,

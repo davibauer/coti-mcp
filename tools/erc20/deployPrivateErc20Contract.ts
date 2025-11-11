@@ -3,6 +3,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { ethers, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const DEPLOY_PRIVATE_ERC20_CONTRACT: ToolAnnotations = {
     title: "Deploy Private ERC20 Contract",
@@ -43,13 +44,13 @@ export function isDeployPrivateERC20ContractArgs(args: unknown): args is { name:
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function deployPrivateERC20ContractHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function deployPrivateERC20ContractHandler(session: SessionContext, args: any): Promise<any> {
     if (!isDeployPrivateERC20ContractArgs(args)) {
         throw new Error("Invalid arguments for deploy_private_erc20_contract");
     }
     const { name, symbol, decimals, gas_limit } = args;
 
-    const results = await performDeployPrivateERC20Contract(name, symbol, decimals, gas_limit);
+    const results = await performDeployPrivateERC20Contract(session, name, symbol, decimals, gas_limit);
     return {
         structuredContent: {
             contractAddress: results.contractAddress,
@@ -73,7 +74,7 @@ export async function deployPrivateERC20ContractHandler(args: Record<string, unk
  * @param gas_limit Optional gas limit for the deployment transaction
  * @returns An object with deployment details and formatted text
  */
-export async function performDeployPrivateERC20Contract(name: string, symbol: string, decimals: number, gas_limit?: string): Promise<{
+export async function performDeployPrivateERC20Contract(session: SessionContext, name: string, symbol: string, decimals: number, gas_limit?: string): Promise<{
     contractAddress: string,
     transactionHash: string,
     name: string,
@@ -84,8 +85,8 @@ export async function performDeployPrivateERC20Contract(name: string, symbol: st
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);

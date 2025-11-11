@@ -4,6 +4,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { decryptUint } from "@coti-io/coti-sdk-typescript";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 /**
  * Tool definition for checking ERC20 token allowance on the COTI blockchain
@@ -46,13 +47,13 @@ export function isGetERC20AllowanceArgs(args: unknown): args is { token_address:
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getERC20AllowanceHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function getERC20AllowanceHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGetERC20AllowanceArgs(args)) {
         throw new Error("Invalid arguments for get_erc20_allowance");
     }
     const { token_address, owner_address, spender_address } = args;
 
-    const results = await performGetERC20Allowance(token_address, owner_address, spender_address);
+    const results = await performGetERC20Allowance(session, token_address, owner_address, spender_address);
     return {
         structuredContent: {
             tokenSymbol: results.tokenSymbol,
@@ -74,7 +75,7 @@ export async function getERC20AllowanceHandler(args: Record<string, unknown> | u
  * @param spender_address - Address of the spender to check allowance for
  * @returns An object with allowance details and formatted text
  */
-export async function performGetERC20Allowance(token_address: string, owner_address: string, spender_address: string): Promise<{
+export async function performGetERC20Allowance(session: SessionContext, token_address: string, owner_address: string, spender_address: string): Promise<{
     tokenSymbol: string,
     decimals: number,
     ownerAddress: string,
@@ -84,8 +85,8 @@ export async function performGetERC20Allowance(token_address: string, owner_addr
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);

@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const DECRYPT_VALUE: ToolAnnotations = {
     title: "Decrypt Value",
@@ -34,14 +35,14 @@ export function isDecryptValueArgs(args: unknown): args is { ciphertext: bigint 
  * @param ciphertext The ciphertext to decrypt.
  * @returns An object with the decrypted value and formatted text.
  */
-export async function performDecryptValue(ciphertext: bigint): Promise<{
+export async function performDecryptValue(session: SessionContext, ciphertext: bigint): Promise<{
     decryptedMessage: string,
     ciphertext: string,
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         const decryptedMessage = await wallet.decryptValue(ciphertext);
@@ -64,13 +65,13 @@ export async function performDecryptValue(ciphertext: bigint): Promise<{
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function decryptValueHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function decryptValueHandler(session: SessionContext, args: any): Promise<any> {
     if (!isDecryptValueArgs(args)) {
         throw new Error("Invalid arguments for decrypt_value");
     }
     const { ciphertext } = args;
 
-    const results = await performDecryptValue(BigInt(ciphertext));
+    const results = await performDecryptValue(session, BigInt(ciphertext));
     return {
         structuredContent: {
             decryptedMessage: results.decryptedMessage,

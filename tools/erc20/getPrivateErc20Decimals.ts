@@ -3,6 +3,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_PRIVATE_ERC20_DECIMALS: ToolAnnotations = {
     title: "Get Private ERC20 Decimals",
@@ -36,13 +37,13 @@ export function isGetPrivateERC20DecimalsArgs(args: unknown): args is { token_ad
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getPrivateERC20DecimalsHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function getPrivateERC20DecimalsHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGetPrivateERC20DecimalsArgs(args)) {
         throw new Error("Invalid arguments for get_private_erc20_decimals");
     }
     const { token_address } = args;
 
-    const results = await performGetPrivateERC20Decimals(token_address);
+    const results = await performGetPrivateERC20Decimals(session, token_address);
     return {
         structuredContent: {
             name: results.name,
@@ -60,7 +61,7 @@ export async function getPrivateERC20DecimalsHandler(args: Record<string, unknow
  * @param token_address The token contract address
  * @returns An object with decimals information and formatted text
  */
-export async function performGetPrivateERC20Decimals(token_address: string): Promise<{
+export async function performGetPrivateERC20Decimals(session: SessionContext, token_address: string): Promise<{
     name: string,
     symbol: string,
     decimals: number,
@@ -68,8 +69,8 @@ export async function performGetPrivateERC20Decimals(token_address: string): Pro
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
-        const currentAccountKeys = getCurrentAccountKeys();
+        const provider = getDefaultProvider(getNetwork(session));
+        const currentAccountKeys = getCurrentAccountKeys(session);
         
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         wallet.setAesKey(currentAccountKeys.aesKey);

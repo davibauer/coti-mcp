@@ -2,6 +2,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { ethers } from "@coti-io/coti-ethers";
 import { z } from "zod";
+import { SessionManager } from "./src/session/SessionManager.js";
+import { SessionContext } from "./src/types/session.js";
+import { SessionKeys } from "./src/types/session.js";
 
 // Account Tools
 
@@ -61,25 +64,50 @@ export const configSchema = z.object({
   cotiMcpPrivateKey: z.string().describe("COTI MCP private key for signing transactions.").optional(),
   cotiMcpNetwork: z.string().describe("COTI MCP network to connect to.").optional().default("testnet"),
 });
+
 export default function ({ config }: { config: z.infer<typeof configSchema> }) {
 
-  if (config.cotiMcpAesKey) {
-    process.env.COTI_MCP_AES_KEY = config.cotiMcpAesKey;
-  }
+  // Global SessionManager instance
+  const sessionManager = new SessionManager();
 
-  if (config.cotiMcpPrivateKey) {
-    process.env.COTI_MCP_PRIVATE_KEY = config.cotiMcpPrivateKey;
-    try {
-      const derivedPublicKey = ethers.computeAddress(config.cotiMcpPrivateKey);
-      process.env.COTI_MCP_PUBLIC_KEY = derivedPublicKey;
-      process.env.COTI_MCP_CURRENT_PUBLIC_KEY = derivedPublicKey;
-    } catch (error) {
-      throw new Error(`Failed to derive public key from private key: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
+  /**
+   * Wrapper function that extracts session context from MCP's extra parameter
+   * and passes it to the tool handler.
+   *
+   * MCP handlers receive: (args, extra) where extra contains sessionId
+   * Our wrapped handlers receive: (sessionContext, args)
+   */
+  function withSession(
+    handler: (sessionContext: SessionContext, args: any) => Promise<any>
+  ) {
+    return async (args: any, extra: any) => {
+      const sessionId = extra?.sessionId;
 
-  if (config.cotiMcpNetwork) {
-    process.env.COTI_MCP_NETWORK = config.cotiMcpNetwork;
+      if (!sessionId) {
+        throw new Error("No session ID provided by MCP transport");
+      }
+
+      // Get or create session
+      let session = sessionManager.getSession(sessionId);
+      if (!session) {
+        console.error(`[MCP] Creating new session for ID: ${sessionId}`);
+        sessionManager.createSession(sessionId);
+        session = sessionManager.getSession(sessionId);
+        if (!session) {
+          throw new Error(`Failed to create session for ID: ${sessionId}`);
+        }
+
+        // Initialize default network in new session
+        session.set(SessionKeys.NETWORK, config.cotiMcpNetwork || 'testnet');
+      }
+
+      const sessionContext: SessionContext = {
+        storage: session,
+        sessionId: sessionId
+      };
+
+      return handler(sessionContext, args);
+    };
   }
 
   const server = new McpServer({
@@ -92,195 +120,195 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
 
   server.registerTool("change_default_account",
     CHANGE_DEFAULT_ACCOUNT,
-    changeDefaultAccountHandler
+    withSession(changeDefaultAccountHandler)
   );
 
-  server.registerTool("create_account", 
-    CREATE_ACCOUNT, 
-    createAccountHandler
+  server.registerTool("create_account",
+    CREATE_ACCOUNT,
+    withSession(createAccountHandler)
   );
 
-  server.registerTool("decrypt_value", 
-    DECRYPT_VALUE, 
-    decryptValueHandler
+  server.registerTool("decrypt_value",
+    DECRYPT_VALUE,
+    withSession(decryptValueHandler)
   );
 
-  server.registerTool("get_current_network", 
+  server.registerTool("get_current_network",
     GET_CURRENT_NETWORK,
-    getCurrentNetworkHandler
+    withSession(getCurrentNetworkHandler)
   );
 
-  server.registerTool("encrypt_value", 
-    ENCRYPT_VALUE, 
-    encryptValueHandler
+  server.registerTool("encrypt_value",
+    ENCRYPT_VALUE,
+    withSession(encryptValueHandler)
   );
 
-  server.registerTool("export_accounts", 
+  server.registerTool("export_accounts",
     EXPORT_ACCOUNTS,
-    exportAccountsHandler
+    withSession(exportAccountsHandler)
   );
 
-  server.registerTool("generate_aes_key", 
+  server.registerTool("generate_aes_key",
     GENERATE_AES_KEY,
-    generateAesKeyHandler
+    withSession(generateAesKeyHandler)
   );
 
-  server.registerTool("import_accounts", 
+  server.registerTool("import_accounts",
     IMPORT_ACCOUNTS,
-    importAccountsHandler
+    withSession(importAccountsHandler)
   );
 
-  server.registerTool("list_accounts", 
+  server.registerTool("list_accounts",
     LIST_ACCOUNTS,
-    listAccountsHandler
+    withSession(listAccountsHandler)
   );
 
-  server.registerTool("sign_message", 
+  server.registerTool("sign_message",
     SIGN_MESSAGE,
-    signMessageHandler
+    withSession(signMessageHandler)
   );
 
-  server.registerTool("switch_network", 
+  server.registerTool("switch_network",
     SWITCH_NETWORK,
-    switchNetworkHandler
+    withSession(switchNetworkHandler)
   );
 
-  server.registerTool("verify_signature", 
+  server.registerTool("verify_signature",
     VERIFY_SIGNATURE,
-    verifySignatureHandler
+    withSession(verifySignatureHandler)
   );
 
   // ERC20 Tools
 
-  server.registerTool("approve_erc20_spender", 
+  server.registerTool("approve_erc20_spender",
     APPROVE_ERC20_SPENDER,
-    approveERC20SpenderHandler
+    withSession(approveERC20SpenderHandler)
   );
 
-  server.registerTool("deploy_private_erc20_contract", 
+  server.registerTool("deploy_private_erc20_contract",
     DEPLOY_PRIVATE_ERC20_CONTRACT,
-    deployPrivateERC20ContractHandler
+    withSession(deployPrivateERC20ContractHandler)
   );
 
-  server.registerTool("get_private_erc20_allowance", 
+  server.registerTool("get_private_erc20_allowance",
     GET_ERC20_ALLOWANCE,
-    getERC20AllowanceHandler
+    withSession(getERC20AllowanceHandler)
   );
 
-  server.registerTool("get_private_erc20_balance", 
+  server.registerTool("get_private_erc20_balance",
     GET_PRIVATE_ERC20_TOKEN_BALANCE,
-    getPrivateERC20BalanceHandler
+    withSession(getPrivateERC20BalanceHandler)
   );
 
-  server.registerTool("get_private_erc20_decimals", 
+  server.registerTool("get_private_erc20_decimals",
     GET_PRIVATE_ERC20_DECIMALS,
-    getPrivateERC20DecimalsHandler
+    withSession(getPrivateERC20DecimalsHandler)
   );
 
-  server.registerTool("get_private_erc20_total_supply", 
+  server.registerTool("get_private_erc20_total_supply",
     GET_PRIVATE_ERC20_TOTAL_SUPPLY,
-    getPrivateERC20TotalSupplyHandler
+    withSession(getPrivateERC20TotalSupplyHandler)
   );
 
-  server.registerTool("mint_private_erc20_token", 
+  server.registerTool("mint_private_erc20_token",
     MINT_PRIVATE_ERC20_TOKEN,
-    mintPrivateERC20TokenHandler
+    withSession(mintPrivateERC20TokenHandler)
   );
 
-  server.registerTool("transfer_private_erc20", 
+  server.registerTool("transfer_private_erc20",
     TRANSFER_PRIVATE_ERC20_TOKEN,
-    transferPrivateERC20TokenHandler
+    withSession(transferPrivateERC20TokenHandler)
   );
 
   // ERC721 Tools
 
-  server.registerTool("approve_private_erc721", 
+  server.registerTool("approve_private_erc721",
     APPROVE_PRIVATE_ERC721,
-    approvePrivateERC721Handler
+    withSession(approvePrivateERC721Handler)
   );
 
-  server.registerTool("deploy_private_erc721_contract", 
+  server.registerTool("deploy_private_erc721_contract",
     DEPLOY_PRIVATE_ERC721_CONTRACT,
-    deployPrivateERC721ContractHandler
+    withSession(deployPrivateERC721ContractHandler)
   );
 
-  server.registerTool("get_private_erc721_approved", 
+  server.registerTool("get_private_erc721_approved",
     GET_PRIVATE_ERC721_APPROVED,
-    getPrivateERC721ApprovedHandler
+    withSession(getPrivateERC721ApprovedHandler)
   );
 
-  server.registerTool("get_private_erc721_balance", 
+  server.registerTool("get_private_erc721_balance",
     GET_PRIVATE_ERC721_BALANCE,
-    getPrivateERC721BalanceHandler
+    withSession(getPrivateERC721BalanceHandler)
   );
 
-  server.registerTool("get_private_erc721_is_approved_for_all", 
+  server.registerTool("get_private_erc721_is_approved_for_all",
     GET_PRIVATE_ERC721_IS_APPROVED_FOR_ALL,
-    getPrivateERC721IsApprovedForAllHandler
+    withSession(getPrivateERC721IsApprovedForAllHandler)
   );
 
-  server.registerTool("get_private_erc721_token_owner", 
+  server.registerTool("get_private_erc721_token_owner",
     GET_PRIVATE_ERC721_TOKEN_OWNER,
-    getPrivateERC721TokenOwnerHandler
+    withSession(getPrivateERC721TokenOwnerHandler)
   );
 
-  server.registerTool("get_private_erc721_token_uri", 
+  server.registerTool("get_private_erc721_token_uri",
     GET_PRIVATE_ERC721_TOKEN_URI,
-    getPrivateERC721TokenURIHandler
+    withSession(getPrivateERC721TokenURIHandler)
   );
 
-  server.registerTool("get_private_erc721_total_supply", 
+  server.registerTool("get_private_erc721_total_supply",
     GET_PRIVATE_ERC721_TOTAL_SUPPLY,
-    getPrivateERC721TotalSupplyHandler
+    withSession(getPrivateERC721TotalSupplyHandler)
   );
 
-  server.registerTool("mint_private_erc721_token", 
+  server.registerTool("mint_private_erc721_token",
     MINT_PRIVATE_ERC721_TOKEN,
-    mintPrivateERC721TokenHandler
+    withSession(mintPrivateERC721TokenHandler)
   );
 
-  server.registerTool("set_private_erc721_approval_for_all", 
+  server.registerTool("set_private_erc721_approval_for_all",
     SET_PRIVATE_ERC721_APPROVAL_FOR_ALL,
-    setPrivateERC721ApprovalForAllHandler
+    withSession(setPrivateERC721ApprovalForAllHandler)
   );
 
-  server.registerTool("transfer_private_erc721", 
+  server.registerTool("transfer_private_erc721",
     TRANSFER_PRIVATE_ERC721_TOKEN,
-    transferPrivateERC721TokenHandler
+    withSession(transferPrivateERC721TokenHandler)
   );
 
   // Transaction Tools
 
-  server.registerTool("call_contract_function", 
+  server.registerTool("call_contract_function",
     CALL_CONTRACT_FUNCTION,
-    callContractFunctionHandler
+    withSession(callContractFunctionHandler)
   );
 
-  server.registerTool("decode_event_data", 
+  server.registerTool("decode_event_data",
     DECODE_EVENT_DATA,
-    decodeEventDataHandler
+    withSession(decodeEventDataHandler)
   );
 
-  server.registerTool("get_transaction_status", 
+  server.registerTool("get_transaction_status",
     GET_TRANSACTION_STATUS,
-    getTransactionStatusHandler
+    withSession(getTransactionStatusHandler)
   );
 
-  server.registerTool("get_transaction_logs", 
+  server.registerTool("get_transaction_logs",
     GET_TRANSACTION_LOGS,
-    getTransactionLogsHandler
+    withSession(getTransactionLogsHandler)
   );
 
   // Native
 
-  server.registerTool("get_native_balance", 
+  server.registerTool("get_native_balance",
     GET_NATIVE_BALANCE,
-    getNativeBalanceHandler
+    withSession(getNativeBalanceHandler)
   );
 
-  server.registerTool("transfer_native", 
+  server.registerTool("transfer_native",
     TRANSFER_NATIVE,
-    transferNativeHandler
+    withSession(transferNativeHandler)
   );
 
   return server.server;

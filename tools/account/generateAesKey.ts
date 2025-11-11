@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { getAccountKeys, getNetwork } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GENERATE_AES_KEY: ToolAnnotations = {
     title: "Generate AES Key",
@@ -30,14 +31,14 @@ export function isGenerateAesKeyArgs(args: unknown): args is { account_address: 
  * @param account_address The address of the account to generate the AES key for.
  * @returns An object with the generated AES key and formatted text.
  */
-export async function performGenerateAesKey(account_address: string): Promise<{
+export async function performGenerateAesKey(session: SessionContext, account_address: string): Promise<{
     aesKey: string,
     address: string,
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getAccountKeys(account_address);
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getAccountKeys(session, account_address);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
 
         await wallet.generateOrRecoverAes();
@@ -53,9 +54,9 @@ export async function performGenerateAesKey(account_address: string): Promise<{
         }
 
         // set the aes key for the account
-        const publicKeys = (process.env.COTI_MCP_PUBLIC_KEY || '').split(',').filter(Boolean);
-        const privateKeys = (process.env.COTI_MCP_PRIVATE_KEY || '').split(',').filter(Boolean);
-        const aesKeys = (process.env.COTI_MCP_AES_KEY || '').split(',').filter(Boolean);
+        const publicKeys = (session.storage.get(SessionKeys.PUBLIC_KEYS) || '').split(',').filter(Boolean);
+        const privateKeys = (session.storage.get(SessionKeys.PRIVATE_KEYS) || '').split(',').filter(Boolean);
+        const aesKeys = (session.storage.get(SessionKeys.AES_KEYS) || '').split(',').filter(Boolean);
 
         const addressIndex = publicKeys.findIndex(key => key.toLowerCase() === account_address.toLowerCase());
 
@@ -65,7 +66,7 @@ export async function performGenerateAesKey(account_address: string): Promise<{
 
         aesKeys[addressIndex] = aesKey;
 
-        process.env.COTI_MCP_AES_KEY = aesKeys.join(',');
+        session.storage.set(SessionKeys.AES_KEYS, aesKeys.join(','));
 
         const formattedText = "AES key: " + aesKey + "\n\n" +
                "Address: " + wallet.address;
@@ -86,13 +87,13 @@ export async function performGenerateAesKey(account_address: string): Promise<{
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function generateAesKeyHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function generateAesKeyHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGenerateAesKeyArgs(args)) {
         throw new Error("Invalid arguments for generate_aes_key");
     }
     const { account_address } = args;
 
-    const results = await performGenerateAesKey(account_address);
+    const results = await performGenerateAesKey(session, account_address);
     return {
         structuredContent: {
             aesKey: results.aesKey,

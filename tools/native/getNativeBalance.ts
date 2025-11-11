@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, ethers } from '@coti-io/coti-ethers';
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_NATIVE_BALANCE: ToolAnnotations = {
     title: "Get Native Balance",
@@ -18,13 +19,13 @@ export const GET_NATIVE_BALANCE: ToolAnnotations = {
  * @param args The arguments to get the balance for
  * @returns The native COTI token balance of the account
  */
-export async function getNativeBalanceHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function getNativeBalanceHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGetNativeBalanceArgs(args)) {
         throw new Error("Invalid arguments for get_native_balance");
     }
     const { account_address } = args;
 
-    const results = await performGetNativeBalance(account_address);
+    const results = await performGetNativeBalance(session, account_address);
     return {
         structuredContent: {
             account: results.account,
@@ -41,14 +42,14 @@ export async function getNativeBalanceHandler(args: Record<string, unknown> | un
  * @param account_address The COTI account address to get the balance for
  * @returns An object with the account balance and formatted text
  */
-export async function performGetNativeBalance(account_address: string): Promise<{
+export async function performGetNativeBalance(session: SessionContext, account_address: string): Promise<{
     account: string,
     balanceWei: string,
     balanceCoti: string,
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
+        const provider = getDefaultProvider(getNetwork(session));
         const balance = await provider.getBalance(account_address);
         const balanceWei = balance.toString();
         const balanceCoti = ethers.formatEther(balance);

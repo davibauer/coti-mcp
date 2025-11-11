@@ -4,6 +4,7 @@ import { decryptUint } from '@coti-io/coti-sdk-typescript';
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_PRIVATE_ERC20_TOKEN_BALANCE: ToolAnnotations = {
     title: "Get Private ERC20 Token Balance",
@@ -34,10 +35,6 @@ export function isGetPrivateERC20TokenBalanceArgs(args: unknown): args is {
         return false;
     }
 
-    if (!process.env.COTI_MCP_PUBLIC_KEY || !process.env.COTI_MCP_PRIVATE_KEY || !process.env.COTI_MCP_AES_KEY) {
-        throw new Error("Missing required environment variables: COTI_MCP_PUBLIC_KEY, COTI_MCP_PRIVATE_KEY, COTI_MCP_AES_KEY");
-    }
-
     return true;
 }
 
@@ -46,14 +43,14 @@ export function isGetPrivateERC20TokenBalanceArgs(args: unknown): args is {
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getPrivateERC20BalanceHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function getPrivateERC20BalanceHandler(session: SessionContext, args: any): Promise<any> {
     if (!isGetPrivateERC20TokenBalanceArgs(args)) {
         throw new Error("Invalid arguments for get_private_erc20_balance");
     }
     const { account_address, token_address } = args;
 
     try {
-        const results = await performGetPrivateERC20TokenBalance(account_address, token_address);
+        const results = await performGetPrivateERC20TokenBalance(session, account_address, token_address);
         return {
             structuredContent: {
                 balance: results.balance,
@@ -80,7 +77,7 @@ export async function getPrivateERC20BalanceHandler(args: Record<string, unknown
  * @param token_address The ERC20 token contract address on COTI blockchain
  * @returns An object with the token balance details and formatted text
  */
-export async function performGetPrivateERC20TokenBalance(account_address: string, token_address: string): Promise<{
+export async function performGetPrivateERC20TokenBalance(session: SessionContext, account_address: string, token_address: string): Promise<{
     balance: string,
     decimals: number,
     symbol: string,
@@ -90,8 +87,8 @@ export async function performGetPrivateERC20TokenBalance(account_address: string
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
 
         wallet.setAesKey(currentAccountKeys.aesKey);

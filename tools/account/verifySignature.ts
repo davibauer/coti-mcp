@@ -1,6 +1,7 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { ethers } from "ethers";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const VERIFY_SIGNATURE: ToolAnnotations = {
     title: "Verify Signature",
@@ -38,7 +39,7 @@ export function isVerifySignatureArgs(args: unknown): args is { message: string,
  * @param signature The signature to verify.
  * @returns An object with verification results and formatted text.
  */
-export async function performVerifySignature(message: string, signature: string): Promise<{
+export async function performVerifySignature(session: SessionContext, message: string, signature: string): Promise<{
     message: string,
     signature: string,
     signerAddress: string,
@@ -69,13 +70,13 @@ export async function performVerifySignature(message: string, signature: string)
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function verifySignatureHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function verifySignatureHandler(session: SessionContext, args: any): Promise<any> {
     if (!isVerifySignatureArgs(args)) {
         throw new Error("Invalid arguments for verify_signature");
     }
     const { message, signature } = args;
 
-    const results = await performVerifySignature(message, signature);
+    const results = await performVerifySignature(session, message, signature);
     return {
         structuredContent: {
             message: results.message,

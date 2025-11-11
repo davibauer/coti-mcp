@@ -3,6 +3,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const SET_PRIVATE_ERC721_APPROVAL_FOR_ALL: ToolAnnotations = {
     title: "Set Private ERC721 Approval For All",
@@ -46,13 +47,13 @@ export function isSetPrivateERC721ApprovalForAllArgs(
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function setPrivateERC721ApprovalForAllHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function setPrivateERC721ApprovalForAllHandler(session: SessionContext, args: any): Promise<any> {
     if (!isSetPrivateERC721ApprovalForAllArgs(args)) {
         throw new Error("Invalid arguments for set_private_erc721_approval_for_all");
     }
     const { token_address, operator_address, approved, gas_limit } = args;
 
-    const results = await performSetPrivateERC721ApprovalForAll(token_address, operator_address, approved, gas_limit);
+    const results = await performSetPrivateERC721ApprovalForAll(session, token_address, operator_address, approved, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -78,12 +79,10 @@ export async function setPrivateERC721ApprovalForAllHandler(args: Record<string,
  * @param gas_limit Optional gas limit for the transaction
  * @returns An object with transaction information and formatted text
  */
-export async function performSetPrivateERC721ApprovalForAll(
-    token_address: string,
+export async function performSetPrivateERC721ApprovalForAll(session: SessionContext, token_address: string,
     operator_address: string,
     approved: boolean,
-    gas_limit?: string
-): Promise<{
+    gas_limit?: string): Promise<{
     transactionHash: string,
     tokenAddress: string,
     tokenName: string,
@@ -96,8 +95,8 @@ export async function performSetPrivateERC721ApprovalForAll(
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
-        const currentAccountKeys = getCurrentAccountKeys();
+        const provider = getDefaultProvider(getNetwork(session));
+        const currentAccountKeys = getCurrentAccountKeys(session);
         
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         wallet.setAesKey(currentAccountKeys.aesKey);

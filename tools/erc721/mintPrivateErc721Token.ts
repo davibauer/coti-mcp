@@ -4,6 +4,7 @@ import { buildStringInputText } from "@coti-io/coti-sdk-typescript";
 import { ERC721_ABI } from "../constants/abis.js";
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const MINT_PRIVATE_ERC721_TOKEN: ToolAnnotations = {
     title: "Mint Private ERC721 Token",
@@ -44,13 +45,13 @@ export function isMintPrivateERC721TokenArgs(args: unknown): args is { token_add
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function mintPrivateERC721TokenHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function mintPrivateERC721TokenHandler(session: SessionContext, args: any): Promise<any> {
     if (!isMintPrivateERC721TokenArgs(args)) {
         throw new Error("Invalid arguments for mint_private_erc721_token");
     }
     const { token_address, to_address, token_uri, gas_limit } = args;
 
-    const results = await performMintPrivateERC721Token(token_address, to_address, token_uri, gas_limit);
+    const results = await performMintPrivateERC721Token(session, token_address, to_address, token_uri, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -74,7 +75,7 @@ export async function mintPrivateERC721TokenHandler(args: Record<string, unknown
  * @param gas_limit Optional gas limit for the minting transaction.
  * @returns An object with minting details and formatted text.
  */
-export async function performMintPrivateERC721Token(token_address: string, to_address: string, token_uri: string, gas_limit?: string): Promise<{
+export async function performMintPrivateERC721Token(session: SessionContext, token_address: string, to_address: string, token_uri: string, gas_limit?: string): Promise<{
     transactionHash: string,
     tokenAddress: string,
     toAddress: string,
@@ -85,8 +86,8 @@ export async function performMintPrivateERC721Token(token_address: string, to_ad
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);

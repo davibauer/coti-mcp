@@ -3,6 +3,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const TRANSFER_PRIVATE_ERC721_TOKEN: ToolAnnotations = {
     title: "Transfer Private ERC721 Token",
@@ -48,13 +49,13 @@ export function isTransferPrivateERC721TokenArgs(args: unknown): args is { token
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function transferPrivateERC721TokenHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function transferPrivateERC721TokenHandler(session: SessionContext, args: any): Promise<any> {
     if (!isTransferPrivateERC721TokenArgs(args)) {
         throw new Error("Invalid arguments for transfer_private_erc721");
     }
     const { token_address, recipient_address, token_id, from_address, use_safe_transfer = false, gas_limit } = args;
 
-    const results = await performTransferPrivateERC721Token(token_address, recipient_address, token_id, use_safe_transfer, gas_limit, from_address);
+    const results = await performTransferPrivateERC721Token(session, token_address, recipient_address, token_id, use_safe_transfer, gas_limit, from_address);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -82,7 +83,7 @@ export async function transferPrivateERC721TokenHandler(args: Record<string, unk
  * @param from_address Optional address to transfer from. If not provided, the current account will be used
  * @returns An object with transfer details and formatted text
  */
-export async function performTransferPrivateERC721Token(token_address: string, recipient_address: string, token_id: string, use_safe_transfer: boolean = false, gas_limit?: string, from_address?: string): Promise<{
+export async function performTransferPrivateERC721Token(session: SessionContext, token_address: string, recipient_address: string, token_id: string, use_safe_transfer: boolean = false, gas_limit?: string, from_address?: string): Promise<{
     transactionHash: string,
     tokenAddress: string,
     tokenName: string,
@@ -95,8 +96,8 @@ export async function performTransferPrivateERC721Token(token_address: string, r
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);

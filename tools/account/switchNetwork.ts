@@ -1,5 +1,6 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const SWITCH_NETWORK: ToolAnnotations = {
     title: "Switch Network",
@@ -30,16 +31,16 @@ export function isSwitchNetworkArgs(args: unknown): args is { network: 'testnet'
  * @param network The network to switch to ('testnet' or 'mainnet')
  * @returns An object with network switch information and formatted text
  */
-export async function performSwitchNetwork(network: 'testnet' | 'mainnet'): Promise<{
+export async function performSwitchNetwork(session: SessionContext, network: 'testnet' | 'mainnet'): Promise<{
     previousNetwork: string,
     newNetwork: string,
     wasAlreadySet: boolean,
     formattedText: string
 }> {
     try {
-        const previousNetwork = process.env.COTI_MCP_NETWORK?.toLowerCase() || 'testnet';
+        const previousNetwork = session.storage.get(SessionKeys.NETWORK)?.toLowerCase() || 'testnet';
         
-        process.env.COTI_MCP_NETWORK = network;
+        session.storage.set(SessionKeys.NETWORK, network);
         
         const wasAlreadySet = previousNetwork === network;
         
@@ -67,13 +68,13 @@ export async function performSwitchNetwork(network: 'testnet' | 'mainnet'): Prom
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function switchNetworkHandler(args: Record<string, unknown> | undefined) {
+export async function switchNetworkHandler(session: SessionContext, args: any) {
     if (!isSwitchNetworkArgs(args)) {
         throw new Error("Invalid arguments for switch_network. Expected 'network' to be either 'testnet' or 'mainnet'");
     }
     const { network } = args;
 
-    const results = await performSwitchNetwork(network);
+    const results = await performSwitchNetwork(session, network);
     return {
         structuredContent: {
             previousNetwork: results.previousNetwork,

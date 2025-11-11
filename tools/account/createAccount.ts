@@ -2,6 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const CREATE_ACCOUNT: ToolAnnotations = {
     title: "Create Account",
@@ -27,50 +28,51 @@ export function isCreateAccountArgs(args: unknown): args is { set_as_default?: b
 
 /**
  * Creates a new COTI account with a randomly generated private key and AES key.
+ * @param session The session context
  * @param set_as_default Optional, whether to set the new account as the default account. Default is false.
  * @returns A formatted string with the new account address, private key, and AES key.
  */
-export async function performCreateAccount(set_as_default: boolean = false): Promise<{
-    address: string, 
-    privateKey: string, 
-    aesKey: string, 
+export async function performCreateAccount(session: SessionContext, set_as_default: boolean = false): Promise<{
+    address: string,
+    privateKey: string,
+    aesKey: string,
     setAsDefault: boolean,
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork());
+        const provider = getDefaultProvider(getNetwork(session));
         const newWallet = Wallet.createRandom(provider);
-        
+
         const privateKey = newWallet.privateKey;
         const address = newWallet.address;
-        
+
         const aesKey = "Fund this account to generate an AES key. Go to https://discord.com/invite/Z4r8D6ez49";
-        
-        const publicKeys = (process.env.COTI_MCP_PUBLIC_KEY || '').split(',').filter(Boolean);
-        const privateKeys = (process.env.COTI_MCP_PRIVATE_KEY || '').split(',').filter(Boolean);
-        const aesKeys = (process.env.COTI_MCP_AES_KEY || '').split(',').filter(Boolean);
-        
+
+        const publicKeys = (session.storage.get(SessionKeys.PUBLIC_KEYS) || '').split(',').filter(Boolean);
+        const privateKeys = (session.storage.get(SessionKeys.PRIVATE_KEYS) || '').split(',').filter(Boolean);
+        const aesKeys = (session.storage.get(SessionKeys.AES_KEYS) || '').split(',').filter(Boolean);
+
         publicKeys.push(address);
         privateKeys.push(privateKey);
         aesKeys.push(aesKey);
-        
-        process.env.COTI_MCP_PUBLIC_KEY = publicKeys.join(',');
-        process.env.COTI_MCP_PRIVATE_KEY = privateKeys.join(',');
-        process.env.COTI_MCP_AES_KEY = aesKeys.join(',');
-        
+
+        session.storage.set(SessionKeys.PUBLIC_KEYS, publicKeys.join(','));
+        session.storage.set(SessionKeys.PRIVATE_KEYS, privateKeys.join(','));
+        session.storage.set(SessionKeys.AES_KEYS, aesKeys.join(','));
+
         if (set_as_default) {
-            process.env.COTI_MCP_CURRENT_PUBLIC_KEY = address;
+            session.storage.set(SessionKeys.CURRENT_PUBLIC_KEY, address);
         }
-        
-         const formattedText = `New COTI account created successfully!\n\n` +
-               `Address: ${address}\n\n` +
-               `Private Key: ${privateKey}\n\n` +
-               `AES Key: ${aesKey}\n\n` +
-               `${set_as_default ? 'Set as default account.' : 'Not set as default account.'}`;
+
+        const formattedText = `New COTI account created successfully!\n\n` +
+            `Address: ${address}\n\n` +
+            `Private Key: ${privateKey}\n\n` +
+            `AES Key: ${aesKey}\n\n` +
+            `${set_as_default ? 'Set as default account.' : 'Not set as default account.'}`;
 
         return {
             address,
-            privateKey, 
+            privateKey,
             aesKey,
             setAsDefault: set_as_default,
             formattedText
@@ -83,18 +85,19 @@ export async function performCreateAccount(set_as_default: boolean = false): Pro
 
 /**
  * Handler for the createAccount tool
+ * @param session The session context
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function createAccountHandler(args: any): Promise<any> {
+export async function createAccountHandler(session: SessionContext, args: any): Promise<any> {
     if (!isCreateAccountArgs(args)) {
         throw new Error("Invalid arguments for create_account");
     }
     const set_as_default = args?.set_as_default as boolean | undefined;
 
-    const results = await performCreateAccount(set_as_default || false);
+    const results = await performCreateAccount(session, set_as_default || false);
     return {
-         structuredContent: {
+        structuredContent: {
             address: results.address,
             privateKey: results.privateKey,
             aesKey: results.aesKey,

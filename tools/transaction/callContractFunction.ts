@@ -3,6 +3,7 @@ import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, Contract } from "@coti-io/coti-ethers";
 import { ERC20_ABI, ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
     title: "Call Contract Function",
@@ -45,7 +46,7 @@ export function isCallContractFunctionArgs(args: unknown): args is { contract_ad
  * @param abi The ABI of the smart contract.
  * @returns An object with function call results and formatted text.
  */
-export async function performCallContractFunction(contract_address: string, function_name: string, function_args: string[], abi?: string): Promise<{
+export async function performCallContractFunction(session: SessionContext, contract_address: string, function_name: string, function_args: string[], abi?: string): Promise<{
     contractAddress: string,
     functionName: string,
     functionArgs: any[],
@@ -55,8 +56,8 @@ export async function performCallContractFunction(contract_address: string, func
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);
@@ -152,13 +153,13 @@ export async function performCallContractFunction(contract_address: string, func
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function callContractFunctionHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function callContractFunctionHandler(session: SessionContext, args: any): Promise<any> {
     if (!isCallContractFunctionArgs(args)) {
         throw new Error("Invalid arguments for call_contract_function");
     }
     const { contract_address, function_name, function_args, abi } = args;
 
-    const results = await performCallContractFunction(contract_address, function_name, function_args, abi);
+    const results = await performCallContractFunction(session, contract_address, function_name, function_args, abi);
     return {
         structuredContent: {
             contractAddress: results.contractAddress,

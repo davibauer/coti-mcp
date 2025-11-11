@@ -1,6 +1,7 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { maskSensitiveString } from "../shared/account.js";
 import { getNetwork } from "../shared/account.js";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const LIST_ACCOUNTS: ToolAnnotations = {
     title: "List Accounts",
@@ -13,7 +14,7 @@ export const LIST_ACCOUNTS: ToolAnnotations = {
  * Lists all available COTI accounts configured in the environment.
  * @returns An object with account information and formatted text.
  */
-export async function performListAccounts(): Promise<{
+export async function performListAccounts(session: SessionContext): Promise<{
     accounts: Array<{
         address: string,
         privateKey: string,
@@ -27,11 +28,11 @@ export async function performListAccounts(): Promise<{
     formattedText: string
 }> {
     try {
-        const publicKeys = (process.env.COTI_MCP_PUBLIC_KEY || '').split(',').filter(Boolean);
-        const privateKeys = (process.env.COTI_MCP_PRIVATE_KEY || '').split(',').filter(Boolean);
-        const aesKeys = (process.env.COTI_MCP_AES_KEY || '').split(',').filter(Boolean);
-        const currentAccount = process.env.COTI_MCP_CURRENT_PUBLIC_KEY || publicKeys[0] || '';
-        const network = getNetwork();
+        const publicKeys = (session.storage.get(SessionKeys.PUBLIC_KEYS) || '').split(',').filter(Boolean);
+        const privateKeys = (session.storage.get(SessionKeys.PRIVATE_KEYS) || '').split(',').filter(Boolean);
+        const aesKeys = (session.storage.get(SessionKeys.AES_KEYS) || '').split(',').filter(Boolean);
+        const currentAccount = session.storage.get(SessionKeys.CURRENT_PUBLIC_KEY) || publicKeys[0] || '';
+        const network = getNetwork(session);
         
         if (publicKeys.length === 0) {
             const formattedText = "No COTI accounts configured in the environment.";
@@ -87,8 +88,8 @@ export async function performListAccounts(): Promise<{
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function listAccountsHandler(args: Record<string, unknown> | undefined): Promise<any> {
-    const results = await performListAccounts();
+export async function listAccountsHandler(session: SessionContext, args: any): Promise<any> {
+    const results = await performListAccounts(session);
     return {
         structuredContent: {
             accounts: results.accounts,

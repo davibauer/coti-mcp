@@ -3,6 +3,7 @@ import { getDefaultProvider, Contract, Wallet } from "@coti-io/coti-ethers";
 import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
+import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const MINT_PRIVATE_ERC20_TOKEN: ToolAnnotations = {
     title: "Mint Private ERC20 Token",
@@ -43,13 +44,13 @@ export function isMintPrivateERC20TokenArgs(args: unknown): args is { token_addr
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function mintPrivateERC20TokenHandler(args: Record<string, unknown> | undefined): Promise<any> {
+export async function mintPrivateERC20TokenHandler(session: SessionContext, args: any): Promise<any> {
     if (!isMintPrivateERC20TokenArgs(args)) {
         throw new Error("Invalid arguments for mint_private_erc20_token");
     }
     const { token_address, recipient_address, amount_wei, gas_limit } = args;
 
-    const results = await performMintPrivateERC20Token(token_address, recipient_address, amount_wei, gas_limit);
+    const results = await performMintPrivateERC20Token(session, token_address, recipient_address, amount_wei, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -72,7 +73,7 @@ export async function mintPrivateERC20TokenHandler(args: Record<string, unknown>
  * @param gas_limit The gas limit for the transaction.
  * @returns An object with minting details and formatted text.
  */
-export async function performMintPrivateERC20Token(token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
+export async function performMintPrivateERC20Token(session: SessionContext, token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
     transactionHash: string,
     tokenAddress: string,
     recipientAddress: string,
@@ -82,8 +83,8 @@ export async function performMintPrivateERC20Token(token_address: string, recipi
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys();
-        const provider = getDefaultProvider(getNetwork());
+        const currentAccountKeys = getCurrentAccountKeys(session);
+        const provider = getDefaultProvider(getNetwork(session));
         const wallet = new Wallet(currentAccountKeys.privateKey, provider);
         
         wallet.setAesKey(currentAccountKeys.aesKey);
