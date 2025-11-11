@@ -72,7 +72,7 @@ export async function performGetSessionInfo(
         }
 
         formattedText += `\n${'='.repeat(50)}\n\n`;
-        formattedText += `Note: This session is managed by the MCP client (Claude Desktop).\n`;
+        formattedText += `Note: This session is managed by the MCP client.\n`;
         formattedText += `Sessions persist while the connection is active and are destroyed on disconnect.\n`;
         formattedText += `To preserve accounts across sessions, use 'export_accounts' before disconnecting.\n`;
 
