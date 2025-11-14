@@ -55,9 +55,6 @@ import { GET_TRANSACTION_STATUS, getTransactionStatusHandler } from "./tools/tra
 
 export const configSchema = z.object({
   debug: z.boolean().default(false).describe("Enable debug logging"),
-  cotiMcpAesKey: z.string().describe("COTI MCP AES key for encrypting values.").optional(),
-  cotiMcpPrivateKey: z.string().describe("COTI MCP private key for signing transactions.").optional(),
-  cotiMcpNetwork: z.string().describe("COTI MCP network to connect to.").optional().default("testnet"),
 });
 
 export default function ({ config }: { config: z.infer<typeof configSchema> }) {
