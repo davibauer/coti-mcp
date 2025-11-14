@@ -1,10 +1,8 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const SET_PRIVATE_ERC721_APPROVAL_FOR_ALL: ToolAnnotations = {
     title: "Set Private ERC721 Approval For All",
     name: "set_private_erc721_approval_for_all",
@@ -14,6 +12,9 @@ export const SET_PRIVATE_ERC721_APPROVAL_FOR_ALL: ToolAnnotations = {
         "Requires token contract address, operator address, and approval status as input. " +
         "Returns the transaction hash upon successful approval setting.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC721 token contract address on COTI blockchain"),
         operator_address: z.string().describe("Address to approve as operator, e.g., 0x0D7C5C1DA069fd7C1fAFBeb922482B2C7B15D273"),
         approved: z.boolean().describe("Whether to approve (true) or revoke (false) the operator"),
@@ -28,7 +29,7 @@ export const SET_PRIVATE_ERC721_APPROVAL_FOR_ALL: ToolAnnotations = {
  */
 export function isSetPrivateERC721ApprovalForAllArgs(
     args: unknown
-): args is { token_address: string; operator_address: string; approved: boolean; gas_limit?: string } {
+): args is { token_address: string; operator_address: string; approved: boolean; gas_limit?: string; private_key?: string; aes_key?: string; network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -47,13 +48,17 @@ export function isSetPrivateERC721ApprovalForAllArgs(
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function setPrivateERC721ApprovalForAllHandler(session: SessionContext, args: any): Promise<any> {
+export async function setPrivateERC721ApprovalForAllHandler(args: any): Promise<any> {
     if (!isSetPrivateERC721ApprovalForAllArgs(args)) {
         throw new Error("Invalid arguments for set_private_erc721_approval_for_all");
     }
-    const { token_address, operator_address, approved, gas_limit } = args;
+    const { token_address, operator_address, approved, gas_limit, network, private_key, aes_key } = args;
 
-    const results = await performSetPrivateERC721ApprovalForAll(session, token_address, operator_address, approved, gas_limit);
+    if (!private_key || !aes_key) {
+        throw new Error("private_key and aes_key are required");
+    }
+
+    const results = await performSetPrivateERC721ApprovalForAll(private_key, aes_key, token_address, operator_address, approved, network, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -79,9 +84,10 @@ export async function setPrivateERC721ApprovalForAllHandler(session: SessionCont
  * @param gas_limit Optional gas limit for the transaction
  * @returns An object with transaction information and formatted text
  */
-export async function performSetPrivateERC721ApprovalForAll(session: SessionContext, token_address: string,
+export async function performSetPrivateERC721ApprovalForAll(private_key: string, aes_key: string, token_address: string,
     operator_address: string,
     approved: boolean,
+    network: 'testnet' | 'mainnet',
     gas_limit?: string): Promise<{
     transactionHash: string,
     tokenAddress: string,
@@ -95,11 +101,9 @@ export async function performSetPrivateERC721ApprovalForAll(session: SessionCont
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork(session));
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
-        wallet.setAesKey(currentAccountKeys.aesKey);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
+        wallet.setAesKey(aes_key);
         
         const tokenContract = new Contract(token_address, ERC721_ABI, wallet);
         

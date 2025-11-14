@@ -2,8 +2,6 @@ import { ethers, getDefaultProvider } from "@coti-io/coti-ethers";
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const GET_TRANSACTION_STATUS: ToolAnnotations = {
     title: "Get Transaction Status",
     name: "get_transaction_status",
@@ -13,6 +11,9 @@ export const GET_TRANSACTION_STATUS: ToolAnnotations = {
         "Requires a transaction hash as input. " +
         "Returns detailed information about the transaction status.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         transaction_hash: z.string().describe("Transaction hash to check status for"),
     },
 };
@@ -22,7 +23,7 @@ export const GET_TRANSACTION_STATUS: ToolAnnotations = {
  * @param args The arguments to validate.
  * @returns True if the arguments are valid, false otherwise.
  */
-export function isGetTransactionStatusArgs(args: unknown): args is { transaction_hash: string } {
+export function isGetTransactionStatusArgs(args: unknown): args is { transaction_hash: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -36,7 +37,7 @@ export function isGetTransactionStatusArgs(args: unknown): args is { transaction
  * @param transaction_hash The transaction hash to check status for.
  * @returns An object with transaction status details and formatted text.
  */
-export async function performGetTransactionStatus(session: SessionContext, transaction_hash: string): Promise<{
+export async function performGetTransactionStatus( transaction_hash: string, network: 'testnet' | 'mainnet'): Promise<{
     transactionHash: string,
     status: string,
     from: string,
@@ -52,7 +53,7 @@ export async function performGetTransactionStatus(session: SessionContext, trans
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork(session));
+        const provider = getDefaultProvider(getNetwork(network));
         const receipt = await provider.getTransactionReceipt(transaction_hash);
         const tx = await provider.getTransaction(transaction_hash);
         
@@ -91,8 +92,7 @@ export async function performGetTransactionStatus(session: SessionContext, trans
         
         const valueEther = ethers.formatEther(tx.value);
         const gasPriceGwei = ethers.formatUnits(tx.gasPrice || 0, 'gwei');
-        const network = await provider.getNetwork();
-        const explorerUrl = `https://${network.name === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}`;
+        const explorerUrl = `https://${network === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}`;
         
         let formattedText = `Transaction Hash: ${transaction_hash}\n\n`;
         formattedText += `Status: ${status}\n\n`;
@@ -133,13 +133,13 @@ export async function performGetTransactionStatus(session: SessionContext, trans
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getTransactionStatusHandler(session: SessionContext, args: any): Promise<any> {
+export async function getTransactionStatusHandler(args: any): Promise<any> {
     if (!isGetTransactionStatusArgs(args)) {
         throw new Error("Invalid arguments for get_transaction_status");
     }
-    const { transaction_hash } = args;
+    const { transaction_hash, network } = args;
 
-    const results = await performGetTransactionStatus(session, transaction_hash);
+    const results = await performGetTransactionStatus( transaction_hash, network);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,

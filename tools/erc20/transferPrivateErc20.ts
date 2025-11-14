@@ -1,11 +1,9 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, Wallet, Contract } from '@coti-io/coti-ethers';
 import { buildInputText } from '@coti-io/coti-sdk-typescript';
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 /**
  * Tool definition for transferring private ERC20 tokens on the COTI blockchain
  */
@@ -17,9 +15,12 @@ export const TRANSFER_PRIVATE_ERC20_TOKEN: ToolAnnotations = {
         "Requires token contract address, recipient address, and amount as input. " +
         "Returns the transaction hash upon successful transfer.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC20 token contract address on COTI blockchain"),
         recipient_address: z.string().describe("Recipient COTI address, e.g., 0x0D7C5C1DA069fd7C1fAFBeb922482B2C7B15D273"),
-        amount_wei: z.string().describe("Amount of tokens to transfer (in Wei)"),
+        amount_wei: z.union([z.string(), z.number()]).transform(val => String(val)).describe("Amount of tokens to transfer (in Wei)"),
         gas_limit: z.string().optional().describe("Optional gas limit for the transaction"),
     },
 };
@@ -29,7 +30,7 @@ export const TRANSFER_PRIVATE_ERC20_TOKEN: ToolAnnotations = {
  * @param args - Arguments to validate
  * @returns True if arguments are valid for transfer private ERC20 token operation
  */
-export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string } {
+export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_address: string, recipient_address: string, amount_wei: string | number, gas_limit?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -38,7 +39,7 @@ export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_
         "recipient_address" in args &&
         typeof (args as { recipient_address: string }).recipient_address === "string" &&
         "amount_wei" in args &&
-        typeof (args as { amount_wei: string }).amount_wei === "string" &&
+        (typeof (args as { amount_wei: string | number }).amount_wei === "string" || typeof (args as { amount_wei: string | number }).amount_wei === "number") &&
         (!("gas_limit" in args) || typeof (args as { gas_limit: string }).gas_limit === "string")
     );
 }
@@ -48,13 +49,18 @@ export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function transferPrivateERC20TokenHandler(session: SessionContext, args: any): Promise<any> {
+export async function transferPrivateERC20TokenHandler(args: any): Promise<any> {
     if (!isTransferPrivateERC20TokenArgs(args)) {
         throw new Error("Invalid arguments for transfer_private_erc20");
     }
-    const { token_address, recipient_address, amount_wei, gas_limit } = args;
+    const { token_address, recipient_address, amount_wei, gas_limit, network, private_key, aes_key } = args;
 
-    const results = await performTransferPrivateERC20Token(session, token_address, recipient_address, amount_wei, gas_limit);
+    if (!private_key || !aes_key) {
+        throw new Error("private_key and aes_key are required");
+    }
+
+    const amount_wei_string = String(amount_wei);
+    const results = await performTransferPrivateERC20Token(private_key, aes_key, token_address, recipient_address, amount_wei_string, network, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -79,7 +85,7 @@ export async function transferPrivateERC20TokenHandler(session: SessionContext, 
  * @param gas_limit - Optional gas limit for the transaction
  * @returns An object with transfer details and formatted text
  */
-export async function performTransferPrivateERC20Token(session: SessionContext, token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string): Promise<{
+export async function performTransferPrivateERC20Token(private_key: string, aes_key: string, token_address: string, recipient_address: string, amount_wei: string, network: 'testnet' | 'mainnet', gas_limit?: string): Promise<{
     transactionHash: string,
     tokenSymbol: string,
     tokenAddress: string,
@@ -91,11 +97,10 @@ export async function performTransferPrivateERC20Token(session: SessionContext, 
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        const provider = getDefaultProvider(getNetwork(session));
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
         
-        wallet.setAesKey(currentAccountKeys.aesKey);
+        wallet.setAesKey(aes_key);
 
         const tokenContract = new Contract(token_address, ERC20_ABI, wallet);
         
@@ -109,7 +114,7 @@ export async function performTransferPrivateERC20Token(session: SessionContext, 
         const transferSelector = tokenContract.transfer.fragment.selector;
 
         const encryptedInputText = buildInputText(BigInt(amount_wei), 
-        { wallet: wallet, userKey: currentAccountKeys.aesKey }, token_address, transferSelector);
+        { wallet: wallet, userKey: aes_key }, token_address, transferSelector);
 
         const tx = await tokenContract.transfer(recipient_address, encryptedInputText, txOptions);
         

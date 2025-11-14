@@ -1,10 +1,8 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
-import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
+import { getNetwork } from "../shared/account.js";
+import { Contract, getDefaultProvider } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const GET_PRIVATE_ERC721_TOKEN_OWNER: ToolAnnotations = {
     title: "Get Private ERC721 Token Owner",
     name: "get_private_erc721_token_owner",
@@ -14,8 +12,9 @@ export const GET_PRIVATE_ERC721_TOKEN_OWNER: ToolAnnotations = {
         "Requires token contract address and token ID as input. " +
         "Returns the owner's address of the specified NFT.",
     inputSchema: {
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC721 token contract address on COTI blockchain"),
-        token_id: z.string().describe("ID of the NFT token to check ownership for"),
+        token_id: z.number().describe("ID of the NFT token to check ownership for"),
     },
 };
 
@@ -24,14 +23,16 @@ export const GET_PRIVATE_ERC721_TOKEN_OWNER: ToolAnnotations = {
  * @param args The arguments to validate
  * @returns true if the arguments are valid, false otherwise
  */
-export function isGetPrivateERC721TokenOwnerArgs(args: unknown): args is { token_address: string, token_id: string } {
+export function isGetPrivateERC721TokenOwnerArgs(args: unknown): args is { token_address: string, token_id: number, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
         "token_address" in args &&
         typeof (args as { token_address: string }).token_address === "string" &&
         "token_id" in args &&
-        typeof (args as { token_id: string }).token_id === "string"
+        typeof (args as { token_id: number }).token_id === "number" &&
+        "network" in args &&
+        typeof (args as { network: string }).network === "string"
     );
 }
 
@@ -40,13 +41,13 @@ export function isGetPrivateERC721TokenOwnerArgs(args: unknown): args is { token
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getPrivateERC721TokenOwnerHandler(session: SessionContext, args: any): Promise<any> {
+export async function getPrivateERC721TokenOwnerHandler(args: any): Promise<any> {
     if (!isGetPrivateERC721TokenOwnerArgs(args)) {
         throw new Error("Invalid arguments for get_private_erc721_token_owner");
     }
-    const { token_address, token_id } = args;
+    const { token_address, token_id, network } = args;
 
-    const results = await performGetPrivateERC721TokenOwner(session, token_address, token_id);
+    const results = await performGetPrivateERC721TokenOwner(token_address, token_id, network);
     return {
         structuredContent: {
             name: results.name,
@@ -66,30 +67,26 @@ export async function getPrivateERC721TokenOwnerHandler(session: SessionContext,
  * @param token_id The ID of the token to check ownership for
  * @returns An object with token owner information and formatted text
  */
-export async function performGetPrivateERC721TokenOwner(session: SessionContext, token_address: string, token_id: string): Promise<{
+export async function performGetPrivateERC721TokenOwner(token_address: string, token_id: number, network: 'testnet' | 'mainnet'): Promise<{
     name: string,
     symbol: string,
-    tokenId: string,
+    tokenId: number,
     ownerAddress: string,
     tokenAddress: string,
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork(session));
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
-        wallet.setAesKey(currentAccountKeys.aesKey);
-        
-        const tokenContract = new Contract(token_address, ERC721_ABI, wallet);
-        
+        const provider = getDefaultProvider(getNetwork(network));
+
+        const tokenContract = new Contract(token_address, ERC721_ABI, provider);
+
         const name = await tokenContract.name();
         const symbol = await tokenContract.symbol();
-        
+
         const ownerAddress = await tokenContract.ownerOf(token_id);
-        
+
         const formattedText = `Token: ${name} (${symbol})\nToken ID: ${token_id}\nOwner Address: ${ownerAddress}`;
-        
+
         return {
             name,
             symbol,

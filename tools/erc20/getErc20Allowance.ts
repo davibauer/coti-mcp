@@ -1,11 +1,9 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, Wallet, Contract, ethers } from '@coti-io/coti-ethers';
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { decryptUint } from "@coti-io/coti-sdk-typescript";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 /**
  * Tool definition for checking ERC20 token allowance on the COTI blockchain
  */
@@ -18,6 +16,9 @@ export const GET_ERC20_ALLOWANCE: ToolAnnotations = {
         "Requires token contract address, owner address, and spender address as input. " +
         "Returns the allowance amount.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC20 token contract address on COTI blockchain"),
         owner_address: z.string().describe("Address of the token owner"),
         spender_address: z.string().describe("Address of the spender to check allowance for"),
@@ -29,7 +30,7 @@ export const GET_ERC20_ALLOWANCE: ToolAnnotations = {
  * @param args - Arguments to validate
  * @returns True if arguments are valid for get ERC20 allowance operation
  */
-export function isGetERC20AllowanceArgs(args: unknown): args is { token_address: string, owner_address: string, spender_address: string } {
+export function isGetERC20AllowanceArgs(args: unknown): args is { token_address: string, owner_address: string, spender_address: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -47,13 +48,17 @@ export function isGetERC20AllowanceArgs(args: unknown): args is { token_address:
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getERC20AllowanceHandler(session: SessionContext, args: any): Promise<any> {
+export async function getERC20AllowanceHandler(args: any): Promise<any> {
     if (!isGetERC20AllowanceArgs(args)) {
         throw new Error("Invalid arguments for get_erc20_allowance");
     }
-    const { token_address, owner_address, spender_address } = args;
+    const { token_address, owner_address, spender_address, network, private_key, aes_key } = args;
 
-    const results = await performGetERC20Allowance(session, token_address, owner_address, spender_address);
+    if (!private_key || !aes_key) {
+        throw new Error("private_key and aes_key are required");
+    }
+
+    const results = await performGetERC20Allowance(private_key, aes_key, token_address, owner_address, spender_address, network);
     return {
         structuredContent: {
             tokenSymbol: results.tokenSymbol,
@@ -75,7 +80,7 @@ export async function getERC20AllowanceHandler(session: SessionContext, args: an
  * @param spender_address - Address of the spender to check allowance for
  * @returns An object with allowance details and formatted text
  */
-export async function performGetERC20Allowance(session: SessionContext, token_address: string, owner_address: string, spender_address: string): Promise<{
+export async function performGetERC20Allowance(private_key: string, aes_key: string, token_address: string, owner_address: string, spender_address: string, network: 'testnet' | 'mainnet'): Promise<{
     tokenSymbol: string,
     decimals: number,
     ownerAddress: string,
@@ -85,11 +90,10 @@ export async function performGetERC20Allowance(session: SessionContext, token_ad
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        const provider = getDefaultProvider(getNetwork(session));
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
         
-        wallet.setAesKey(currentAccountKeys.aesKey);
+        wallet.setAesKey(aes_key);
 
         const tokenContract = new Contract(token_address, ERC20_ABI, wallet);
         
@@ -97,7 +101,7 @@ export async function performGetERC20Allowance(session: SessionContext, token_ad
         const decimalsResult = await tokenContract.decimals();
         
         const allowanceResult = await tokenContract.allowance(owner_address, spender_address);
-        const decryptedAllowance = decryptUint(allowanceResult, currentAccountKeys.aesKey);
+        const decryptedAllowance = decryptUint(allowanceResult, aes_key);
         const formattedAllowance = decryptedAllowance ? ethers.formatUnits(decryptedAllowance, decimalsResult) : "Unable to decrypt";
         
         const formattedText = `ERC20 Token Allowance:\nToken: ${symbolResult}\nOwner: ${owner_address}\nSpender: ${spender_address}\nAllowance: ${formattedAllowance}`;

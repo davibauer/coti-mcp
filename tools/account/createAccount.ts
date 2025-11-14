@@ -2,79 +2,50 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const CREATE_ACCOUNT: ToolAnnotations = {
     title: "Create Account",
     name: "create_account",
-    description: "Create a new COTI account with a randomly generated private key and AES key. Returns the new account address, private key, and AES key.",
+    description: "Create a new COTI account with a randomly generated private key and AES key. Returns the new account details for the AI assistant to track in conversation context. The AI should remember these credentials for use in subsequent operations.",
     inputSchema: {
-        set_as_default: z.boolean().optional().default(false).describe("Optional, whether to set the new account as the default account. Default is false."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to create account for: 'testnet' or 'mainnet' (required)."),
     }
 };
 
 /**
- * Validates the arguments for creating a new account
- * @param args The arguments to validate
- * @returns True if the arguments are valid, false otherwise
- */
-export function isCreateAccountArgs(args: unknown): args is { set_as_default?: boolean } {
-    return (
-        typeof args === "object" &&
-        args !== null &&
-        (!('set_as_default' in args) || typeof (args as { set_as_default?: boolean }).set_as_default === 'boolean')
-    );
-}
-
-/**
  * Creates a new COTI account with a randomly generated private key and AES key.
- * @param session The session context
- * @param set_as_default Optional, whether to set the new account as the default account. Default is false.
- * @returns A formatted string with the new account address, private key, and AES key.
+ * @param network Required network parameter: 'testnet' or 'mainnet'
+ * @returns Account details including address, private key, and AES key placeholder
  */
-export async function performCreateAccount(session: SessionContext, set_as_default: boolean = false): Promise<{
+export async function performCreateAccount(network: 'testnet' | 'mainnet'): Promise<{
     address: string,
     privateKey: string,
     aesKey: string,
-    setAsDefault: boolean,
+    network: string,
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork(session));
+        const provider = getDefaultProvider(getNetwork(network));
         const newWallet = Wallet.createRandom(provider);
 
         const privateKey = newWallet.privateKey;
         const address = newWallet.address;
 
         const aesKey = "Fund this account to generate an AES key. Go to https://discord.com/invite/Z4r8D6ez49";
-
-        const publicKeys = (session.storage.get(SessionKeys.PUBLIC_KEYS) || '').split(',').filter(Boolean);
-        const privateKeys = (session.storage.get(SessionKeys.PRIVATE_KEYS) || '').split(',').filter(Boolean);
-        const aesKeys = (session.storage.get(SessionKeys.AES_KEYS) || '').split(',').filter(Boolean);
-
-        publicKeys.push(address);
-        privateKeys.push(privateKey);
-        aesKeys.push(aesKey);
-
-        session.storage.set(SessionKeys.PUBLIC_KEYS, publicKeys.join(','));
-        session.storage.set(SessionKeys.PRIVATE_KEYS, privateKeys.join(','));
-        session.storage.set(SessionKeys.AES_KEYS, aesKeys.join(','));
-
-        if (set_as_default) {
-            session.storage.set(SessionKeys.CURRENT_PUBLIC_KEY, address);
-        }
+        const networkStr = network;
 
         const formattedText = `New COTI account created successfully!\n\n` +
+            `Network: ${networkStr}\n` +
             `Address: ${address}\n\n` +
             `Private Key: ${privateKey}\n\n` +
-            `AES Key: ${aesKey}\n\n` +
-            `${set_as_default ? 'Set as default account.' : 'Not set as default account.'}`;
+            `AES Key Placeholder: ${aesKey}\n\n` +
+            `⚠️ IMPORTANT: Save these credentials! The AI assistant will remember them during this conversation, but they will be lost when the conversation ends.`;
 
         return {
             address,
             privateKey,
             aesKey,
-            setAsDefault: set_as_default,
+            network: networkStr,
             formattedText
         };
     } catch (error) {
@@ -85,23 +56,19 @@ export async function performCreateAccount(session: SessionContext, set_as_defau
 
 /**
  * Handler for the createAccount tool
- * @param session The session context
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function createAccountHandler(session: SessionContext, args: any): Promise<any> {
-    if (!isCreateAccountArgs(args)) {
-        throw new Error("Invalid arguments for create_account");
-    }
-    const set_as_default = args?.set_as_default as boolean | undefined;
+export async function createAccountHandler(args: any): Promise<any> {
+    const network = args?.network as 'testnet' | 'mainnet';
 
-    const results = await performCreateAccount(session, set_as_default || false);
+    const results = await performCreateAccount(network);
     return {
         structuredContent: {
             address: results.address,
             privateKey: results.privateKey,
             aesKey: results.aesKey,
-            setAsDefault: results.setAsDefault
+            network: results.network
         },
         content: [{ type: "text", text: results.formattedText }],
         isError: false,

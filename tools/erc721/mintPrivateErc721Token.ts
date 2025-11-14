@@ -2,10 +2,8 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, Wallet, Contract } from "@coti-io/coti-ethers";
 import { buildStringInputText } from "@coti-io/coti-sdk-typescript";
 import { ERC721_ABI } from "../constants/abis.js";
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const MINT_PRIVATE_ERC721_TOKEN: ToolAnnotations = {
     title: "Mint Private ERC721 Token",
     name: "mint_private_erc721_token",
@@ -14,6 +12,9 @@ export const MINT_PRIVATE_ERC721_TOKEN: ToolAnnotations = {
         "This creates a new NFT in the specified collection with the provided token URI. " +
         "Returns the transaction hash and token ID upon successful minting.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC721 token contract address on COTI blockchain"),
         to_address: z.string().describe("Address to receive the minted NFT"),
         token_uri: z.string().describe("URI for the token metadata (can be IPFS URI or any other URI), Example: \"https://example.com/token/0\""),
@@ -26,7 +27,7 @@ export const MINT_PRIVATE_ERC721_TOKEN: ToolAnnotations = {
  * @param args The arguments to validate.
  * @returns True if the arguments are valid, false otherwise.
  */
-export function isMintPrivateERC721TokenArgs(args: unknown): args is { token_address: string, to_address: string, token_uri: string, gas_limit?: string } {
+export function isMintPrivateERC721TokenArgs(args: unknown): args is { token_address: string, to_address: string, token_uri: string, gas_limit?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -45,13 +46,17 @@ export function isMintPrivateERC721TokenArgs(args: unknown): args is { token_add
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function mintPrivateERC721TokenHandler(session: SessionContext, args: any): Promise<any> {
+export async function mintPrivateERC721TokenHandler(args: any): Promise<any> {
     if (!isMintPrivateERC721TokenArgs(args)) {
         throw new Error("Invalid arguments for mint_private_erc721_token");
     }
-    const { token_address, to_address, token_uri, gas_limit } = args;
+    const { token_address, to_address, token_uri, gas_limit, network, private_key, aes_key } = args;
 
-    const results = await performMintPrivateERC721Token(session, token_address, to_address, token_uri, gas_limit);
+    if (!private_key || !aes_key) {
+        throw new Error("private_key and aes_key are required");
+    }
+
+    const results = await performMintPrivateERC721Token(private_key, aes_key, token_address, to_address, token_uri, network, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
@@ -75,7 +80,7 @@ export async function mintPrivateERC721TokenHandler(session: SessionContext, arg
  * @param gas_limit Optional gas limit for the minting transaction.
  * @returns An object with minting details and formatted text.
  */
-export async function performMintPrivateERC721Token(session: SessionContext, token_address: string, to_address: string, token_uri: string, gas_limit?: string): Promise<{
+export async function performMintPrivateERC721Token(private_key: string, aes_key: string, token_address: string, to_address: string, token_uri: string, network: 'testnet' | 'mainnet', gas_limit?: string): Promise<{
     transactionHash: string,
     tokenAddress: string,
     toAddress: string,
@@ -86,17 +91,16 @@ export async function performMintPrivateERC721Token(session: SessionContext, tok
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        const provider = getDefaultProvider(getNetwork(session));
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
         
-        wallet.setAesKey(currentAccountKeys.aesKey);
+        wallet.setAesKey(aes_key);
         
         const tokenContract = new Contract(token_address, ERC721_ABI, wallet);
         
         const mintSelector = tokenContract.mint.fragment.selector;
         
-        const encryptedInputText = buildStringInputText(token_uri, { wallet: wallet, userKey: currentAccountKeys.aesKey }, token_address, mintSelector);
+        const encryptedInputText = buildStringInputText(token_uri, { wallet: wallet, userKey: aes_key }, token_address, mintSelector);
         
         const txOptions: any = {};
         if (gas_limit) {
