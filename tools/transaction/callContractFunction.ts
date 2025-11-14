@@ -1,10 +1,8 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, Contract } from "@coti-io/coti-ethers";
 import { ERC20_ABI, ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
     title: "Call Contract Function",
     name: "call_contract_function",
@@ -13,6 +11,9 @@ export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
         "This allows retrieving data from any contract by specifying the contract address, function name, and parameters. " +
         "Returns the function result in a human-readable format.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         contract_address: z.string().describe("Address of the smart contract to call"),
         function_name: z.string().describe("Name of the function to call on the contract"),
         function_args: z.array(z.string()).describe("Array of arguments to pass to the function (can be empty if function takes no arguments)"),
@@ -25,7 +26,7 @@ export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
  * @param args The arguments to check.
  * @returns True if the arguments are valid, false otherwise.
  */
-export function isCallContractFunctionArgs(args: unknown): args is { contract_address: string, function_name: string, function_args: string[], abi?: string } {
+export function isCallContractFunctionArgs(args: unknown): args is { contract_address: string, function_name: string, function_args: string[], abi?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -46,7 +47,7 @@ export function isCallContractFunctionArgs(args: unknown): args is { contract_ad
  * @param abi The ABI of the smart contract.
  * @returns An object with function call results and formatted text.
  */
-export async function performCallContractFunction(session: SessionContext, contract_address: string, function_name: string, function_args: string[], abi?: string): Promise<{
+export async function performCallContractFunction(private_key: string, aes_key: string, contract_address: string, function_name: string, function_args: string[], network: 'testnet' | 'mainnet', abi?: string): Promise<{
     contractAddress: string,
     functionName: string,
     functionArgs: any[],
@@ -56,11 +57,10 @@ export async function performCallContractFunction(session: SessionContext, contr
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        const provider = getDefaultProvider(getNetwork(session));
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
         
-        wallet.setAesKey(currentAccountKeys.aesKey);
+        wallet.setAesKey(aes_key);
         
         let contractAbi;
         if (abi) {
@@ -153,13 +153,17 @@ export async function performCallContractFunction(session: SessionContext, contr
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function callContractFunctionHandler(session: SessionContext, args: any): Promise<any> {
+export async function callContractFunctionHandler(args: any): Promise<any> {
     if (!isCallContractFunctionArgs(args)) {
         throw new Error("Invalid arguments for call_contract_function");
     }
-    const { contract_address, function_name, function_args, abi } = args;
+    const { contract_address, function_name, function_args, abi, network, private_key, aes_key } = args;
 
-    const results = await performCallContractFunction(session, contract_address, function_name, function_args, abi);
+    if (!private_key || !aes_key) {
+        throw new Error("private_key and aes_key are required");
+    }
+
+    const results = await performCallContractFunction(private_key, aes_key, contract_address, function_name, function_args, network, abi);
     return {
         structuredContent: {
             contractAddress: results.contractAddress,

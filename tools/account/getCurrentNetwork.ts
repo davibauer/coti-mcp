@@ -1,28 +1,31 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
+import { z } from "zod";
 
 export const GET_CURRENT_NETWORK: ToolAnnotations = {
     title: "Get Current Network",
     name: "get_current_network",
-    description: "Get the currently configured COTI network (testnet or mainnet). Returns the network that all blockchain operations will use.",
-    inputSchema: {}
+    description: "Get the currently configured COTI network (testnet or mainnet). The AI assistant should track and pass the current network context. If no network is provided, defaults to testnet.",
+    inputSchema: {
+        network: z.enum(['testnet', 'mainnet']).optional().describe("The current network context (tracked by AI assistant). Defaults to 'testnet' if not provided."),
+    }
 };
 
 /**
  * Gets the currently configured COTI network.
+ * @param network Optional network parameter (from AI context)
  * @returns An object with the current network and formatted text
  */
-export async function performGetCurrentNetwork(session: SessionContext): Promise<{
+export async function performGetCurrentNetwork(network?: 'testnet' | 'mainnet'): Promise<{
     network: string,
     formattedText: string
 }> {
     try {
-        const network = session.storage.get(SessionKeys.NETWORK)?.toLowerCase() || 'testnet';
-        
-        const formattedText = `Current network: ${network}`;
-        
+        const currentNetwork = network || 'testnet';
+
+        const formattedText = `Current network: ${currentNetwork}`;
+
         return {
-            network,
+            network: currentNetwork,
             formattedText
         };
     } catch (error) {
@@ -33,11 +36,12 @@ export async function performGetCurrentNetwork(session: SessionContext): Promise
 
 /**
  * Handler for the getCurrentNetwork tool
- * @param args The arguments for the tool (none required)
+ * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getCurrentNetworkHandler(session: SessionContext, args: any) {
-    const results = await performGetCurrentNetwork(session);
+export async function getCurrentNetworkHandler(args: any) {
+    const network = args?.network as 'testnet' | 'mainnet' | undefined;
+    const results = await performGetCurrentNetwork(network);
     return {
         structuredContent: {
             network: results.network

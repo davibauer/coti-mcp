@@ -1,10 +1,8 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const GET_PRIVATE_ERC721_TOKEN_URI: ToolAnnotations = {
     title: "Get Private ERC721 Token URI",
     name: "get_private_erc721_token_uri",
@@ -14,8 +12,11 @@ export const GET_PRIVATE_ERC721_TOKEN_URI: ToolAnnotations = {
         "Requires token contract address and token ID as input. " +
         "Returns the decrypted tokenURI.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC721 token contract address on COTI blockchain"),
-        token_id: z.string().describe("ID of the NFT token to get the URI for"),
+        token_id: z.number().describe("ID of the NFT token to get the URI for"),
     },
 };
 
@@ -24,14 +25,14 @@ export const GET_PRIVATE_ERC721_TOKEN_URI: ToolAnnotations = {
  * @param args - Arguments to validate
  * @returns True if arguments are valid for get private ERC721 token URI operation
  */
-export function isGetPrivateERC721TokenURIArgs(args: unknown): args is { token_address: string, token_id: string } {
+export function isGetPrivateERC721TokenURIArgs(args: unknown): args is { private_key: string, token_address: string, token_id: number, aes_key: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
         "token_address" in args &&
         typeof (args as { token_address: string }).token_address === "string" &&
         "token_id" in args &&
-        typeof (args as { token_id: string }).token_id === "string"
+        typeof (args as { token_id: number }).token_id === "number"
     );
 }
 
@@ -40,13 +41,13 @@ export function isGetPrivateERC721TokenURIArgs(args: unknown): args is { token_a
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getPrivateERC721TokenURIHandler(session: SessionContext, args: any): Promise<any> {
+export async function getPrivateERC721TokenURIHandler(args: any): Promise<any> {
     if (!isGetPrivateERC721TokenURIArgs(args)) {
         throw new Error("Invalid arguments for get_private_erc721_token_uri");
     }
-    const { token_address, token_id } = args;
+    const { private_key, token_address, token_id, network, aes_key } = args;
 
-    const results = await performGetPrivateERC721TokenURI(session, token_address, token_id);
+    const results = await performGetPrivateERC721TokenURI(private_key, aes_key, token_address, token_id, network);
     return {
         structuredContent: {
             name: results.name,
@@ -67,21 +68,20 @@ export async function getPrivateERC721TokenURIHandler(session: SessionContext, a
  * @param token_id The ID of the token to get the URI for
  * @returns An object with token URI information and formatted text
  */
-export async function performGetPrivateERC721TokenURI(session: SessionContext, token_address: string, token_id: string): Promise<{
+export async function performGetPrivateERC721TokenURI(private_key: string, aes_key: string, token_address: string, token_id: number, network: 'testnet' | 'mainnet'): Promise<{
     name: string,
     symbol: string,
-    tokenId: string,
+    tokenId: number,
     tokenURI: string,
     decryptionSuccess: boolean,
     tokenAddress: string,
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        const provider = getDefaultProvider(getNetwork(session));
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
         
-        wallet.setAesKey(currentAccountKeys.aesKey);
+        wallet.setAesKey(aes_key);
         
         const tokenContract = new Contract(token_address, ERC721_ABI, wallet);
         

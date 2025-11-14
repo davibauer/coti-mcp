@@ -1,7 +1,6 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { ethers } from "ethers";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const VERIFY_SIGNATURE: ToolAnnotations = {
     title: "Verify Signature",
@@ -22,7 +21,7 @@ export const VERIFY_SIGNATURE: ToolAnnotations = {
  * @param args The arguments to check.
  * @returns True if the arguments are valid, false otherwise.
  */
-export function isVerifySignatureArgs(args: unknown): args is { message: string, signature: string } {
+export function isVerifySignatureArgs(args: unknown): args is { message: string, signature: string , private_key?: string, aes_key?: string, network?: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -35,11 +34,11 @@ export function isVerifySignatureArgs(args: unknown): args is { message: string,
 
 /**
  * Verifies a message signature and recovers the address that signed it.
- * @param message The original message that was signed.
- * @param signature The signature to verify.
- * @returns An object with verification results and formatted text.
+ * @param message The original message that was signed
+ * @param signature The signature to verify
+ * @returns An object with verification results and formatted text
  */
-export async function performVerifySignature(session: SessionContext, message: string, signature: string): Promise<{
+export async function performVerifySignature(message: string, signature: string): Promise<{
     message: string,
     signature: string,
     signerAddress: string,
@@ -49,9 +48,9 @@ export async function performVerifySignature(session: SessionContext, message: s
     try {
         // Recover the address from the signature
         const signerAddress = ethers.verifyMessage(message, signature);
-        
+
         const formattedText = `Message: "${message}"\nSignature: ${signature}\nSigned by address: ${signerAddress}`;
-        
+
         return {
             message,
             signature,
@@ -70,13 +69,13 @@ export async function performVerifySignature(session: SessionContext, message: s
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function verifySignatureHandler(session: SessionContext, args: any): Promise<any> {
+export async function verifySignatureHandler(args: any): Promise<any> {
     if (!isVerifySignatureArgs(args)) {
         throw new Error("Invalid arguments for verify_signature");
     }
     const { message, signature } = args;
 
-    const results = await performVerifySignature(session, message, signature);
+    const results = await performVerifySignature(message, signature);
     return {
         structuredContent: {
             message: results.message,

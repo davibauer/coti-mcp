@@ -1,16 +1,17 @@
 import { getDefaultProvider, Wallet, Contract, ethers } from '@coti-io/coti-ethers';
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { decryptUint } from '@coti-io/coti-sdk-typescript';
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const GET_PRIVATE_ERC20_TOKEN_BALANCE: ToolAnnotations = {
     title: "Get Private ERC20 Token Balance",
     name: "get_private_erc20_balance",
     description: "Get the balance of a private ERC20 token on the COTI blockchain. This is used for checking the current balance of a private token for a COTI account. Requires a COTI account address and token contract address as input. Returns the decrypted token balance.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         account_address: z.string().describe("COTI account address, e.g., 0x0D7C5C1DA069fd7C1fAFBeb922482B2C7B15D273"),
         token_address: z.string().describe("ERC20 token contract address on COTI blockchain"),
     },
@@ -24,6 +25,9 @@ export const GET_PRIVATE_ERC20_TOKEN_BALANCE: ToolAnnotations = {
 export function isGetPrivateERC20TokenBalanceArgs(args: unknown): args is {
     account_address: string;
     token_address: string;
+    private_key?: string;
+    aes_key?: string;
+    network: 'testnet' | 'mainnet';
 } {
     if (typeof args !== "object" || args === null) {
         return false;
@@ -43,14 +47,18 @@ export function isGetPrivateERC20TokenBalanceArgs(args: unknown): args is {
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getPrivateERC20BalanceHandler(session: SessionContext, args: any): Promise<any> {
+export async function getPrivateERC20BalanceHandler(args: any): Promise<any> {
     if (!isGetPrivateERC20TokenBalanceArgs(args)) {
         throw new Error("Invalid arguments for get_private_erc20_balance");
     }
-    const { account_address, token_address } = args;
+    const { account_address, token_address, network, private_key, aes_key } = args;
+
+    if (!private_key || !aes_key) {
+        throw new Error("private_key and aes_key are required");
+    }
 
     try {
-        const results = await performGetPrivateERC20TokenBalance(session, account_address, token_address);
+        const results = await performGetPrivateERC20TokenBalance(private_key, aes_key, account_address, token_address, network);
         return {
             structuredContent: {
                 balance: results.balance,
@@ -77,7 +85,7 @@ export async function getPrivateERC20BalanceHandler(session: SessionContext, arg
  * @param token_address The ERC20 token contract address on COTI blockchain
  * @returns An object with the token balance details and formatted text
  */
-export async function performGetPrivateERC20TokenBalance(session: SessionContext, account_address: string, token_address: string): Promise<{
+export async function performGetPrivateERC20TokenBalance(private_key: string, aes_key: string, account_address: string, token_address: string, network: 'testnet' | 'mainnet'): Promise<{
     balance: string,
     decimals: number,
     symbol: string,
@@ -87,11 +95,10 @@ export async function performGetPrivateERC20TokenBalance(session: SessionContext
     formattedText: string
 }> {
     try {
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        const provider = getDefaultProvider(getNetwork(session));
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
 
-        wallet.setAesKey(currentAccountKeys.aesKey);
+        wallet.setAesKey(aes_key);
         
         const tokenContract = new Contract(token_address, ERC20_ABI, wallet);
         
@@ -104,7 +111,7 @@ export async function performGetPrivateERC20TokenBalance(session: SessionContext
         const encryptedBalance = await tokenContract.balanceOf(account_address);
         
         try {
-            const decryptedBalance = decryptUint(encryptedBalance, currentAccountKeys.aesKey);
+            const decryptedBalance = decryptUint(encryptedBalance, aes_key);
             const formattedBalance = decryptedBalance ? ethers.formatUnits(decryptedBalance, decimalsResult) : "Unable to decrypt";
             
             const formattedText = `Balance: ${formattedBalance}\nDecimals: ${Number(decimalsResult)}\nSymbol: ${symbolResult}\nName: ${nameResult}`;

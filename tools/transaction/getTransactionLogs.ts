@@ -2,8 +2,6 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const GET_TRANSACTION_LOGS: ToolAnnotations = {
     title: "Get Transaction Logs",
     name: "get_transaction_logs",
@@ -13,6 +11,9 @@ export const GET_TRANSACTION_LOGS: ToolAnnotations = {
         "Requires a transaction hash as input. " +
         "Returns detailed information about the transaction logs including event names, topics, and data.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         transaction_hash: z.string().describe("Transaction hash to get logs for"),
     },
 };
@@ -22,7 +23,7 @@ export const GET_TRANSACTION_LOGS: ToolAnnotations = {
  * @param args The input arguments to check
  * @returns True if the arguments are valid, false otherwise
  */
-export function isGetTransactionLogsArgs(args: unknown): args is { transaction_hash: string } {
+export function isGetTransactionLogsArgs(args: unknown): args is { transaction_hash: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -36,7 +37,7 @@ export function isGetTransactionLogsArgs(args: unknown): args is { transaction_h
  * @param transaction_hash The hash of the transaction to get logs for
  * @returns An object with transaction logs and formatted text
  */
-export async function performGetTransactionLogs(session: SessionContext, transaction_hash: string): Promise<{
+export async function performGetTransactionLogs(transaction_hash: string, network: 'testnet' | 'mainnet'): Promise<{
     transactionHash: string,
     totalLogs: number,
     logs: Array<{
@@ -54,7 +55,7 @@ export async function performGetTransactionLogs(session: SessionContext, transac
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork(session));
+        const provider = getDefaultProvider(getNetwork(network));
         let receipt;
         try {
             receipt = await provider.getTransactionReceipt(transaction_hash);
@@ -93,8 +94,7 @@ export async function performGetTransactionLogs(session: SessionContext, transac
             };
         }
         
-        const network = await provider.getNetwork();
-        const explorerUrl = `https://${network.name === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}`;
+        const explorerUrl = `https://${network === 'mainnet' ? 'mainnet' : 'testnet'}.cotiscan.io/tx/${transaction_hash}`;
         
         let formattedText = `Transaction Hash: ${transaction_hash}\n\n`;
         formattedText += `Total Logs: ${logs.length}\n\n`;
@@ -153,13 +153,13 @@ export async function performGetTransactionLogs(session: SessionContext, transac
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function getTransactionLogsHandler(session: SessionContext, args: any): Promise<any> {
+export async function getTransactionLogsHandler(args: any): Promise<any> {
     if (!isGetTransactionLogsArgs(args)) {
         throw new Error("Invalid arguments for get_transaction_logs");
     }
-    const { transaction_hash } = args;
+    const { transaction_hash, network, private_key, aes_key } = args;
 
-    const results = await performGetTransactionLogs(session, transaction_hash);
+    const results = await performGetTransactionLogs(transaction_hash, network);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,

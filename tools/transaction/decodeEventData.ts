@@ -1,15 +1,16 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
-import { getCurrentAccountKeys, getNetwork } from "../shared/account.js";
+import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, ethers } from "@coti-io/coti-ethers";
 import { ERC20_ABI, ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
-
 export const DECODE_EVENT_DATA: ToolAnnotations = {
     title: "Decode Event Data",
     name: "decode_event_data",
     description: "Decode event data from a transaction log based on the event signature. This helps interpret the raw data in transaction logs by matching the event signature to known event types and decoding the parameters. Requires event signature, topics, and data from a transaction log.",
     inputSchema: {
+        private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
+        aes_key: z.string().optional().describe("AES key for private transactions (tracked by AI). Required for private operations."),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         topics: z.array(z.string()).describe("Array of topics from the transaction log"),
         data: z.string().describe("Data field from the transaction log"),
         abi: z.string().optional().describe("Optional JSON string representation of the contract ABI. If not provided, will attempt to use standard ERC20/ERC721 ABIs."),
@@ -21,7 +22,7 @@ export const DECODE_EVENT_DATA: ToolAnnotations = {
  * @param args The arguments to check.
  * @returns True if the arguments are valid, false otherwise.
  */
-export function isDecodeEventDataArgs(args: unknown): args is { topics: string[]; data: string; abi?: string } {
+export function isDecodeEventDataArgs(args: unknown): args is { topics: string[]; data: string; abi?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -40,7 +41,7 @@ export function isDecodeEventDataArgs(args: unknown): args is { topics: string[]
  * @param abi Optional JSON string representation of the contract ABI. If not provided, will attempt to use standard ERC20/ERC721 ABIs.
  * @returns An object with decoded event data and formatted text.
  */
-export async function performDecodeEventData(session: SessionContext, topics: string[], data: string, abi?: string): Promise<{
+export async function performDecodeEventData(private_key: string, aes_key: string, topics: string[], data: string, network: 'testnet' | 'mainnet', abi?: string): Promise<{
     eventName: string,
     eventSignature: string,
     eventTopic: string,
@@ -56,9 +57,8 @@ export async function performDecodeEventData(session: SessionContext, topics: st
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork(session));
-        const currentAccountKeys = getCurrentAccountKeys(session);
-        const wallet = new Wallet(currentAccountKeys.privateKey, provider);
+        const provider = getDefaultProvider(getNetwork(network));
+        const wallet = new Wallet(private_key, provider);
         const standardAbis = [...ERC20_ABI, ...ERC721_ABI];
         
         const iface = new ethers.Interface(abi || standardAbis);
@@ -132,13 +132,17 @@ export async function performDecodeEventData(session: SessionContext, topics: st
  * @param args The arguments for the tool
  * @returns The tool response
  */
-export async function decodeEventDataHandler(session: SessionContext, args: any): Promise<any> {
+export async function decodeEventDataHandler(args: any): Promise<any> {
     if (!isDecodeEventDataArgs(args)) {
         throw new Error("Invalid arguments for decode_event_data");
     }
-    const { topics, data, abi } = args;
+    const { topics, data, abi, network, private_key, aes_key } = args;
 
-    const results = await performDecodeEventData(session, topics, data, abi);
+    if (!private_key || !aes_key) {
+        throw new Error("private_key and aes_key are required");
+    }
+
+    const results = await performDecodeEventData(private_key, aes_key, topics, data, network, abi);
     return {
         structuredContent: {
             eventName: results.eventName,

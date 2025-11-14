@@ -2,15 +2,15 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider, ethers } from '@coti-io/coti-ethers';
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-import { SessionContext, SessionKeys } from "../../src/types/session.js";
 
 export const GET_NATIVE_BALANCE: ToolAnnotations = {
     title: "Get Native Balance",
     name: "get_native_balance",
     description:
-        "Get the native COTI token balance of a COTI blockchain account. This is used for checking the current balance of a COTI account. Requires a COTI account address as input. Returns the account balance in COTI tokens.",
+        "Get the native COTI token balance of a COTI blockchain account. This is used for checking the current balance of a COTI account. Returns the account balance in COTI tokens.",
     inputSchema: {
         account_address: z.string().describe("COTI account address, e.g., 0x0D7C5C1DA069fd7C1fAFBeb922482B2C7B15D273"),
+        network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
     },
 };
 
@@ -19,13 +19,13 @@ export const GET_NATIVE_BALANCE: ToolAnnotations = {
  * @param args The arguments to get the balance for
  * @returns The native COTI token balance of the account
  */
-export async function getNativeBalanceHandler(session: SessionContext, args: any): Promise<any> {
+export async function getNativeBalanceHandler(args: any): Promise<any> {
     if (!isGetNativeBalanceArgs(args)) {
         throw new Error("Invalid arguments for get_native_balance");
     }
-    const { account_address } = args;
+    const { account_address, network } = args;
 
-    const results = await performGetNativeBalance(session, account_address);
+    const results = await performGetNativeBalance(account_address, network);
     return {
         structuredContent: {
             account: results.account,
@@ -40,22 +40,26 @@ export async function getNativeBalanceHandler(session: SessionContext, args: any
 /**
  * Gets the native COTI token balance of a COTI blockchain account
  * @param account_address The COTI account address to get the balance for
+ * @param network Required network parameter: 'testnet' or 'mainnet'
  * @returns An object with the account balance and formatted text
  */
-export async function performGetNativeBalance(session: SessionContext, account_address: string): Promise<{
+export async function performGetNativeBalance(
+    account_address: string,
+    network: 'testnet' | 'mainnet'
+): Promise<{
     account: string,
     balanceWei: string,
     balanceCoti: string,
     formattedText: string
 }> {
     try {
-        const provider = getDefaultProvider(getNetwork(session));
+        const provider = getDefaultProvider(getNetwork(network));
         const balance = await provider.getBalance(account_address);
         const balanceWei = balance.toString();
         const balanceCoti = ethers.formatEther(balance);
-        
+
         const formattedText = `Account: ${account_address}\nBalance: ${balanceWei} wei (${balanceCoti} COTI)`;
-        
+
         return {
             account: account_address,
             balanceWei,
@@ -73,7 +77,7 @@ export async function performGetNativeBalance(session: SessionContext, account_a
  * @param args The arguments to check
  * @returns True if the arguments are valid, false otherwise
  */
-export function isGetNativeBalanceArgs(args: unknown): args is { account_address: string } {
+export function isGetNativeBalanceArgs(args: unknown): args is { account_address: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
