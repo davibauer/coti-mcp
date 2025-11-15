@@ -90,17 +90,31 @@ export async function performMintPrivateERC20Token(private_key: string, aes_key:
     try {
         const provider = getDefaultProvider(getNetwork(network));
         const wallet = new Wallet(private_key, provider);
-        
+
         wallet.setAesKey(aes_key);
-        
+
         const tokenContract = new Contract(token_address, ERC20_ABI, wallet);
-        
+
+        // Validate amount doesn't exceed uint64 maximum
+        const MAX_UINT64 = BigInt("18446744073709551615"); // 2^64 - 1
+        const amountBigInt = BigInt(amount_wei);
+
+        if (amountBigInt > MAX_UINT64) {
+            throw new Error(
+                `The mint amount (${amount_wei}) exceeds the maximum allowed value for this contract.\n` +
+                `Maximum uint64 value: ${MAX_UINT64.toString()}\n` +
+                `Your amount: ${amountBigInt.toString()}\n` +
+                `Decimals: ${await tokenContract.decimals()}\n` +
+                `Please use a smaller amount or deploy a private token contract with fewer decimals.`
+            );
+        }
+
         const txOptions: any = {};
         if (gas_limit) {
             txOptions.gasLimit = gas_limit;
         }
-        
-        const mintTx = await tokenContract.mint(recipient_address, BigInt(amount_wei), txOptions);
+
+        const mintTx = await tokenContract.mint(recipient_address, amountBigInt, txOptions);
 
         const receipt = await mintTx.wait();
         
