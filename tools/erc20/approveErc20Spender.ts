@@ -21,7 +21,7 @@ export const APPROVE_ERC20_SPENDER: ToolAnnotations = {
         network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC20 token contract address on COTI blockchain"),
         spender_address: z.string().describe("Address to approve as spender, e.g., 0x0D7C5C1DA069fd7C1fAFBeb922482B2C7B15D273"),
-        amount_wei: z.union([z.string(), z.number()]).transform(val => String(val)).describe("Amount of tokens to approve (in Wei)"),
+        amount_wei: z.string().describe("Amount of tokens to approve (in Wei)"),
         gas_limit: z.string().optional().describe("Optional gas limit for the transaction"),
     },
 };
@@ -31,7 +31,7 @@ export const APPROVE_ERC20_SPENDER: ToolAnnotations = {
  * @param args - Arguments to validate
  * @returns True if arguments are valid for approve ERC20 spender operation
  */
-export function isApproveERC20SpenderArgs(args: unknown): args is { token_address: string, spender_address: string, amount_wei: string | number, gas_limit?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
+export function isApproveERC20SpenderArgs(args: unknown): args is { token_address: string, spender_address: string, amount_wei: string, gas_limit?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -40,7 +40,7 @@ export function isApproveERC20SpenderArgs(args: unknown): args is { token_addres
         "spender_address" in args &&
         typeof (args as { spender_address: string }).spender_address === "string" &&
         "amount_wei" in args &&
-        (typeof (args as { amount_wei: string | number }).amount_wei === "string" || typeof (args as { amount_wei: string | number }).amount_wei === "number") &&
+        (typeof (args as { amount_wei: string }).amount_wei === "string") &&
         (!("gas_limit" in args) || typeof (args as { gas_limit: string }).gas_limit === "string")
     );
 }

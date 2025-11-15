@@ -20,7 +20,7 @@ export const TRANSFER_PRIVATE_ERC20_TOKEN: ToolAnnotations = {
         network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         token_address: z.string().describe("ERC20 token contract address on COTI blockchain"),
         recipient_address: z.string().describe("Recipient COTI address, e.g., 0x0D7C5C1DA069fd7C1fAFBeb922482B2C7B15D273"),
-        amount_wei: z.union([z.string(), z.number()]).transform(val => String(val)).describe("Amount of tokens to transfer (in Wei)"),
+        amount_wei: z.string().describe("Amount of tokens to transfer (in Wei)"),
         gas_limit: z.string().optional().describe("Optional gas limit for the transaction"),
     },
 };
@@ -30,7 +30,7 @@ export const TRANSFER_PRIVATE_ERC20_TOKEN: ToolAnnotations = {
  * @param args - Arguments to validate
  * @returns True if arguments are valid for transfer private ERC20 token operation
  */
-export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_address: string, recipient_address: string, amount_wei: string | number, gas_limit?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
+export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_address: string, recipient_address: string, amount_wei: string, gas_limit?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -39,7 +39,7 @@ export function isTransferPrivateERC20TokenArgs(args: unknown): args is { token_
         "recipient_address" in args &&
         typeof (args as { recipient_address: string }).recipient_address === "string" &&
         "amount_wei" in args &&
-        (typeof (args as { amount_wei: string | number }).amount_wei === "string" || typeof (args as { amount_wei: string | number }).amount_wei === "number") &&
+        (typeof (args as { amount_wei: string }).amount_wei === "string") &&
         (!("gas_limit" in args) || typeof (args as { gas_limit: string }).gas_limit === "string")
     );
 }
@@ -59,8 +59,7 @@ export async function transferPrivateERC20TokenHandler(args: any): Promise<any> 
         throw new Error("private_key and aes_key are required");
     }
 
-    const amount_wei_string = String(amount_wei);
-    const results = await performTransferPrivateERC20Token(private_key, aes_key, token_address, recipient_address, amount_wei_string, network, gas_limit);
+    const results = await performTransferPrivateERC20Token(private_key, aes_key, token_address, recipient_address, amount_wei, network, gas_limit);
     return {
         structuredContent: {
             transactionHash: results.transactionHash,
