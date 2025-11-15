@@ -15,7 +15,7 @@ export const TRANSFER_NATIVE: ToolAnnotations = {
     inputSchema: {
         private_key: z.string().describe("Private key of the sender account (tracked by AI from previous import/generate operations)"),
         recipient_address: z.string().describe("Recipient COTI address, e.g., 0x0D7C5C1DA069fd7C1fAFBeb922482B2C7B15D273"),
-        amount_wei: z.union([z.string(), z.number()]).transform(val => String(val)).describe("Amount of COTI to transfer (in Wei)"),
+        amount_wei: z.string().describe("Amount of COTI to transfer (in Wei)"),
         network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         gas_limit: z.string().optional().describe("Optional gas limit for the transaction"),
     },
@@ -90,7 +90,7 @@ export async function performTransferNative(
 export function isTransferNativeArgs(args: unknown): args is {
     private_key: string,
     recipient_address: string,
-    amount_wei: string | number,
+    amount_wei: string,
     network: 'testnet' | 'mainnet',
     gas_limit?: string
 } {
@@ -102,7 +102,7 @@ export function isTransferNativeArgs(args: unknown): args is {
         "recipient_address" in args &&
         typeof (args as { recipient_address: string }).recipient_address === "string" &&
         "amount_wei" in args &&
-        (typeof (args as { amount_wei: string | number }).amount_wei === "string" || typeof (args as { amount_wei: string | number }).amount_wei === "number") &&
+        (typeof (args as { amount_wei: string }).amount_wei === "string") &&
         (!("network" in args) || typeof (args as { network: string }).network === "string") &&
         (!("gas_limit" in args) || typeof (args as { gas_limit: string }).gas_limit === "string")
     );
