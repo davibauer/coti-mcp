@@ -16,7 +16,7 @@ export const DEPLOY_PRIVATE_ERC20_CONTRACT: ToolAnnotations = {
         network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         name: z.string().describe("Name of the token"),
         symbol: z.string().describe("Symbol of the token (typically 3-5 characters)"),
-        decimals: z.number().describe("Number of decimals for the token"),
+        decimals: z.number().int().min(0).max(6).describe("Number of decimals for the token (0-6)"),
         gas_limit: z.string().optional().describe("Optional gas limit for the deployment transaction"),
     },
 };
@@ -88,6 +88,11 @@ export async function performDeployPrivateERC20Contract(private_key: string, nam
     formattedText: string
 }> {
     try {
+        // Validate decimals parameter
+        if (decimals < 0 || decimals > 6 || !Number.isInteger(decimals)) {
+            throw new Error("Decimals must be an integer between 0 and 6");
+        }
+
         const provider = getDefaultProvider(getNetwork(network));
         const wallet = new Wallet(private_key, provider);
         
