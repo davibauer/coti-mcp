@@ -16,7 +16,7 @@ export const DEPLOY_PRIVATE_ERC20_CONTRACT: ToolAnnotations = {
         network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         name: z.string().describe("Name of the token"),
         symbol: z.string().describe("Symbol of the token (typically 3-5 characters)"),
-        decimals: z.number().int().min(0).max(6).describe("Number of decimals for the token (0-6)"),
+        decimals: z.number().describe("Number of decimals for the token (0-6)"),
         gas_limit: z.string().optional().describe("Optional gas limit for the deployment transaction"),
     },
 };
@@ -36,9 +36,6 @@ export function isDeployPrivateERC20ContractArgs(args: unknown): args is { priva
         typeof (args as { symbol: string }).symbol === "string" &&
         "decimals" in args &&
         typeof (args as { decimals: number }).decimals === "number" &&
-        Number.isInteger((args as { decimals: number }).decimals) &&
-        (args as { decimals: number }).decimals >= 0 &&
-        (args as { decimals: number }).decimals <= 6 &&
         "private_key" in args &&
         typeof (args as { private_key: string }).private_key === "string" &&
         (!("gas_limit" in args) || typeof (args as { gas_limit: string }).gas_limit === "string")
