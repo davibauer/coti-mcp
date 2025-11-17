@@ -16,7 +16,7 @@ export const DEPLOY_PRIVATE_ERC20_CONTRACT: ToolAnnotations = {
         network: z.enum(['testnet', 'mainnet']).describe("Network to use: 'testnet' or 'mainnet' (required)."),
         name: z.string().describe("Name of the token"),
         symbol: z.string().describe("Symbol of the token (typically 3-5 characters)"),
-        decimals: z.number().int().describe("Number of decimals for the token (0-6)"),
+        decimals: z.number().describe("Number of decimals for the token (0-6)"),
         gas_limit: z.string().optional().describe("Optional gas limit for the deployment transaction"),
     },
 };
