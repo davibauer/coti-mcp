@@ -36,6 +36,9 @@ export function isDeployPrivateERC20ContractArgs(args: unknown): args is { priva
         typeof (args as { symbol: string }).symbol === "string" &&
         "decimals" in args &&
         typeof (args as { decimals: number }).decimals === "number" &&
+        Number.isInteger((args as { decimals: number }).decimals) &&
+        (args as { decimals: number }).decimals >= 0 &&
+        (args as { decimals: number }).decimals <= 6 &&
         "private_key" in args &&
         typeof (args as { private_key: string }).private_key === "string" &&
         (!("gas_limit" in args) || typeof (args as { gas_limit: string }).gas_limit === "string")
