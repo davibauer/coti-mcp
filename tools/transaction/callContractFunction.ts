@@ -7,8 +7,10 @@ export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
     title: "Call Contract Function",
     name: "call_contract_function",
     description:
-        "Call a read-only function on any smart contract on the COTI blockchain. " +
-        "This allows retrieving data from any contract by specifying the contract address, function name, and parameters. " +
+        "Call any function on a smart contract on the COTI blockchain. " +
+        "Supports both read-only (view/pure) functions and state-changing (write) functions. " +
+        "Read-only functions return data without creating a transaction. " +
+        "State-changing functions create transactions and may require gas_limit. " +
         "Returns the function result in a human-readable format.",
     inputSchema: {
         private_key: z.string().describe("Private key of the account (tracked by AI from previous operations)"),
@@ -18,6 +20,7 @@ export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
         function_name: z.string().describe("Name of the function to call on the contract"),
         function_args: z.array(z.string()).describe("Array of arguments to pass to the function (can be empty if function takes no arguments)"),
         abi: z.string().optional().describe("Optional JSON string representation of the contract ABI. If not provided, will attempt to use standard ERC20/ERC721 ABIs."),
+        gas_limit: z.string().optional().describe("Optional gas limit for state-changing functions. Not needed for read-only functions."),
     },
 };
 
@@ -26,7 +29,7 @@ export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
  * @param args The arguments to check.
  * @returns True if the arguments are valid, false otherwise.
  */
-export function isCallContractFunctionArgs(args: unknown): args is { contract_address: string, function_name: string, function_args: string[], abi?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet' } {
+export function isCallContractFunctionArgs(args: unknown): args is { contract_address: string, function_name: string, function_args: string[], abi?: string , private_key?: string, aes_key?: string, network: 'testnet' | 'mainnet', gas_limit?: string } {
     return (
         typeof args === "object" &&
         args !== null &&
@@ -35,7 +38,8 @@ export function isCallContractFunctionArgs(args: unknown): args is { contract_ad
         "function_name" in args &&
         typeof (args as { function_name: string }).function_name === "string" &&
         "function_args" in args &&
-        Array.isArray((args as { function_args: string[] }).function_args)
+        Array.isArray((args as { function_args: string[] }).function_args) &&
+        (!("gas_limit" in args) || typeof (args as { gas_limit: string }).gas_limit === "string")
     );
 }
 
@@ -45,9 +49,10 @@ export function isCallContractFunctionArgs(args: unknown): args is { contract_ad
  * @param function_name The name of the function to call.
  * @param function_args The arguments to pass to the function.
  * @param abi The ABI of the smart contract.
+ * @param gas_limit Optional gas limit for state-changing functions.
  * @returns An object with function call results and formatted text.
  */
-export async function performCallContractFunction(private_key: string, aes_key: string, contract_address: string, function_name: string, function_args: string[], network: 'testnet' | 'mainnet', abi?: string): Promise<{
+export async function performCallContractFunction(private_key: string, aes_key: string, contract_address: string, function_name: string, function_args: string[], network: 'testnet' | 'mainnet', abi?: string, gas_limit?: string): Promise<{
     contractAddress: string,
     functionName: string,
     functionArgs: any[],
@@ -99,18 +104,22 @@ export async function performCallContractFunction(private_key: string, aes_key: 
             if (arg.match(/^-?\d+\.\d+$/)) return parseFloat(arg);
             return arg;
         });
-        
-        const result = await contract[function_name](...processedArgs);
-        
+
+        // Add gas limit for state-changing transactions if provided
+        const txOptions: any = gas_limit ? { gasLimit: gas_limit } : {};
+
+        const result = await contract[function_name](...processedArgs, txOptions);
+
+        // Define replacer at function scope for reuse with BigInt serialization
+        const replacer = (key: string, value: any) => {
+            if (typeof value === 'bigint') {
+                return value.toString();
+            }
+            return value;
+        };
+
         let formattedResult: string;
         if (typeof result === 'object' && result !== null) {
-            const replacer = (key: string, value: any) => {
-                if (typeof value === 'bigint') {
-                    return value.toString();
-                }
-                return value;
-            };
-            
             if (Array.isArray(result)) {
                 formattedResult = JSON.stringify(result, replacer, 2);
             } else if (result._isBigNumber || typeof result.toString === 'function') {
@@ -124,7 +133,7 @@ export async function performCallContractFunction(private_key: string, aes_key: 
             formattedResult = String(result);
         }
         
-        const formattedText = `Function Call Successful!\n\nContract: ${contract_address}\n\nFunction: ${function_name}\n\nArguments: ${JSON.stringify(processedArgs)}\n\nResult: ${formattedResult}`;
+        const formattedText = `Function Call Successful!\n\nContract: ${contract_address}\n\nFunction: ${function_name}\n\nArguments: ${JSON.stringify(processedArgs, replacer)}\n\nResult: ${formattedResult}`;
         
         let contractType: string | undefined;
         if (contractAbi === ERC20_ABI) {
@@ -132,11 +141,16 @@ export async function performCallContractFunction(private_key: string, aes_key: 
         } else if (contractAbi === ERC721_ABI) {
             contractType = 'ERC721';
         }
-        
+
+        // Convert BigInt in processedArgs to string for safe serialization
+        const serializableArgs = processedArgs.map(arg =>
+            typeof arg === 'bigint' ? arg.toString() : arg
+        );
+
         return {
             contractAddress: contract_address,
             functionName: function_name,
-            functionArgs: processedArgs,
+            functionArgs: serializableArgs,
             result,
             formattedResult,
             contractType,
@@ -157,13 +171,13 @@ export async function callContractFunctionHandler(args: any): Promise<any> {
     if (!isCallContractFunctionArgs(args)) {
         throw new Error("Invalid arguments for call_contract_function");
     }
-    const { contract_address, function_name, function_args, abi, network, private_key, aes_key } = args;
+    const { contract_address, function_name, function_args, abi, network, private_key, aes_key, gas_limit } = args;
 
     if (!private_key || !aes_key) {
         throw new Error("private_key and aes_key are required");
     }
 
-    const results = await performCallContractFunction(private_key, aes_key, contract_address, function_name, function_args, network, abi);
+    const results = await performCallContractFunction(private_key, aes_key, contract_address, function_name, function_args, network, abi, gas_limit);
     return {
         structuredContent: {
             contractAddress: results.contractAddress,

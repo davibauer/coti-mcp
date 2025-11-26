@@ -16,6 +16,13 @@ import { SIGN_MESSAGE, signMessageHandler } from "./tools/account/signMessage.js
 import { SWITCH_NETWORK, switchNetworkHandler } from "./tools/account/switchNetwork.js";
 import { VERIFY_SIGNATURE, verifySignatureHandler } from "./tools/account/verifySignature.js";
 
+// Compiler & Deployment Tools
+
+import { COMPILE_CONTRACT, compileContractHandler } from "./tools/compiler/compileContract.js";
+import { COMPILE_AND_DEPLOY_CONTRACT, compileAndDeployContractHandler } from "./tools/deployment/compileAndDeployContract.js";
+import { GET_PRIVATE_ERC20_TEMPLATE, getPrivateERC20TemplateHandler, GET_PRIVATE_ERC721_TEMPLATE, getPrivateERC721TemplateHandler, GET_PRIVATE_MESSAGE_TEMPLATE, getPrivateMessageTemplateHandler } from "./tools/templates/getContractTemplates.js";
+import { VERIFY_CONTRACT, verifyContractHandler } from "./tools/verification/verifyContract.js";
+
 // ERC20 Tools
 
 import { APPROVE_ERC20_SPENDER, approveERC20SpenderHandler } from "./tools/erc20/approveErc20Spender.js";
@@ -113,6 +120,38 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
   server.registerTool("verify_signature",
     VERIFY_SIGNATURE,
     verifySignatureHandler
+  );
+
+  // Compiler & Deployment Tools
+
+  server.registerTool("compile_contract",
+    COMPILE_CONTRACT,
+    compileContractHandler
+  );
+
+  server.registerTool("compile_and_deploy_contract",
+    COMPILE_AND_DEPLOY_CONTRACT,
+    compileAndDeployContractHandler
+  );
+
+  // server.registerTool("get_private_erc20_template",
+  //   GET_PRIVATE_ERC20_TEMPLATE,
+  //   getPrivateERC20TemplateHandler
+  // );
+
+  // server.registerTool("get_private_erc721_template",
+  //   GET_PRIVATE_ERC721_TEMPLATE,
+  //   getPrivateERC721TemplateHandler
+  // );
+
+  // server.registerTool("get_private_message_template",
+  //   GET_PRIVATE_MESSAGE_TEMPLATE,
+  //   getPrivateMessageTemplateHandler
+  // );
+
+  server.registerTool("verify_contract",
+    VERIFY_CONTRACT,
+    verifyContractHandler
   );
 
   // ERC20 Tools
