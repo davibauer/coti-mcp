@@ -134,20 +134,20 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
     compileAndDeployContractHandler
   );
 
-  server.registerTool("get_private_erc20_template",
-    GET_PRIVATE_ERC20_TEMPLATE,
-    getPrivateERC20TemplateHandler
-  );
+  // server.registerTool("get_private_erc20_template",
+  //   GET_PRIVATE_ERC20_TEMPLATE,
+  //   getPrivateERC20TemplateHandler
+  // );
 
-  server.registerTool("get_private_erc721_template",
-    GET_PRIVATE_ERC721_TEMPLATE,
-    getPrivateERC721TemplateHandler
-  );
+  // server.registerTool("get_private_erc721_template",
+  //   GET_PRIVATE_ERC721_TEMPLATE,
+  //   getPrivateERC721TemplateHandler
+  // );
 
-  server.registerTool("get_private_message_template",
-    GET_PRIVATE_MESSAGE_TEMPLATE,
-    getPrivateMessageTemplateHandler
-  );
+  // server.registerTool("get_private_message_template",
+  //   GET_PRIVATE_MESSAGE_TEMPLATE,
+  //   getPrivateMessageTemplateHandler
+  // );
 
   server.registerTool("verify_contract",
     VERIFY_CONTRACT,
