@@ -17,7 +17,7 @@
         "@coti-io/coti-ethers": "^1.0.0",
         "@coti-io/coti-sdk-typescript": "^1.0.4",
         "@modelcontextprotocol/sdk": "^1.12.1",
-        "@openzeppelin/contracts": "^5.0.0",
+        "@openzeppelin/contracts": "^4.9.6",
         "solc": "^0.8.20",
         "zod": "^3.25.46"
     },
