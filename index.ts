@@ -149,10 +149,10 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
   //   getPrivateMessageTemplateHandler
   // );
 
-  server.registerTool("verify_contract",
-    VERIFY_CONTRACT,
-    verifyContractHandler
-  );
+  // server.registerTool("verify_contract",
+  //   VERIFY_CONTRACT,
+  //   verifyContractHandler
+  // );
 
   // ERC20 Tools
 
