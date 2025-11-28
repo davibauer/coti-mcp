@@ -117,7 +117,7 @@ export async function compileContractHandler(args: any): Promise<any> {
             structuredContent: {
                 success: true,
                 bytecode: compilationResult.bytecode,
-                abi: compilationResult.abi,
+                abi: JSON.stringify(compilationResult.abi, null, 2),
                 warnings: compilationResult.warnings,
                 bytecodeSize: bytecodeSize,
                 bytecodeSizeKB: parseFloat(bytecodeSizeKB),

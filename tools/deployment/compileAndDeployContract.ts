@@ -402,7 +402,7 @@ export async function performCompileAndDeployContract(
             transactionStatus: receipt.status ?? 1,
             blockNumber: receipt.blockNumber,
             gasUsed: receipt.gasUsed.toString(),
-            abi: compilationResult.abi,
+            abi: JSON.stringify(compilationResult.abi, null, 2),
             deployer: wallet.address,
             network,
             constructorParams: constructor_params,
