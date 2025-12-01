@@ -62,7 +62,8 @@ export async function deployPrivateERC20ContractHandler(args: any): Promise<any>
             symbol: results.symbol,
             decimals: results.decimals,
             gasLimit: results.gasLimit,
-            deployer: results.deployer
+            deployer: results.deployer,
+            abi: ERC20_ABI,
         },
         content: [{ type: "text", text: results.formattedText }],
         isError: false,

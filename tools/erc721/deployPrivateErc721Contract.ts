@@ -56,7 +56,8 @@ export async function deployPrivateERC721ContractHandler(args: any): Promise<any
             name: results.name,
             symbol: results.symbol,
             deployer: results.deployer,
-            gasLimit: results.gasLimit
+            gasLimit: results.gasLimit,
+            abi: ERC721_ABI,
         },
         content: [{ type: "text", text: results.formattedText }],
         isError: false,
