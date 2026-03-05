@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { z } from "zod";
 
-export const DECRYPT_VALUE: ToolAnnotations = {
+export const DECRYPT_VALUE = {
     title: "Decrypt Value",
     name: "decrypt_value",
     description:

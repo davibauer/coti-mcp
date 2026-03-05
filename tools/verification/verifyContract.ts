@@ -2,7 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { ethers } from "@coti-io/coti-ethers";
 
-export const VERIFY_CONTRACT: ToolAnnotations = {
+export const VERIFY_CONTRACT = {
     title: "Verify Contract on CotiScan",
     name: "verify_contract",
     description:

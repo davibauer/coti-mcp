@@ -6,7 +6,10 @@
     "module": "./index.ts",
     "type": "module",
     "scripts": {
-        "dev": "npx @smithery/cli dev"
+        "dev": "npx @smithery/cli dev",
+        "build": "tsc",
+        "start": "node build/server.js",
+        "start:dev": "tsx server.ts"
     },
     "keywords": [],
     "author": "Davi Bauer",

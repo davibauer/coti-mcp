@@ -2,7 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { ethers } from "@coti-io/coti-ethers";
 import { z } from "zod";
 
-export const IMPORT_ACCOUNT_FROM_PRIVATE_KEY: ToolAnnotations = {
+export const IMPORT_ACCOUNT_FROM_PRIVATE_KEY = {
     title: "Import Account From Private Key",
     name: "import_account_from_private_key",
     description: "Import a COTI account using only a private key. The public key will be derived automatically, and the AES key placeholder will be set (fund the account to generate a real AES key).",

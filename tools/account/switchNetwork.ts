@@ -1,7 +1,7 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const SWITCH_NETWORK: ToolAnnotations = {
+export const SWITCH_NETWORK = {
     title: "Switch Network",
     name: "switch_network",
     description: "Switch between COTI testnet and mainnet networks. The AI assistant should remember this network selection and pass it to subsequent blockchain operations. Returns the new network to be tracked by the AI.",

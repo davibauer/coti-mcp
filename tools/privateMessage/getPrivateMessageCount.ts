@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, Contract } from "@coti-io/coti-ethers";
 import { z } from "zod";
 
-export const GET_PRIVATE_MESSAGE_COUNT: ToolAnnotations = {
+export const GET_PRIVATE_MESSAGE_COUNT = {
     title: "Get Private Message Count",
     name: "get_private_message_count",
     description:

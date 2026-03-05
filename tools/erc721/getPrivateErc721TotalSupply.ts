@@ -3,7 +3,7 @@ import { getDefaultProvider, Contract } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-export const GET_PRIVATE_ERC721_TOTAL_SUPPLY: ToolAnnotations = {
+export const GET_PRIVATE_ERC721_TOTAL_SUPPLY= {
     title: "Get Private ERC721 Total Supply",
     name: "get_private_erc721_total_supply",
     description:

@@ -2,7 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getDefaultProvider } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-export const GET_TRANSACTION_LOGS: ToolAnnotations = {
+export const GET_TRANSACTION_LOGS = {
     title: "Get Transaction Logs",
     name: "get_transaction_logs",
     description:

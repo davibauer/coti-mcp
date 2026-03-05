@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, Contract } from "@coti-io/coti-ethers";
 import { ERC20_ABI, ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const CALL_CONTRACT_FUNCTION: ToolAnnotations = {
+export const CALL_CONTRACT_FUNCTION = {
     title: "Call Contract Function",
     name: "call_contract_function",
     description:

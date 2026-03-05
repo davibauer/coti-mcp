@@ -3,7 +3,7 @@ import { getDefaultProvider, ethers } from '@coti-io/coti-ethers';
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
 
-export const GET_NATIVE_BALANCE: ToolAnnotations = {
+export const GET_NATIVE_BALANCE = {
     title: "Get Native Balance",
     name: "get_native_balance",
     description:

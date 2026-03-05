@@ -3,7 +3,7 @@ import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
 
-export const CREATE_ACCOUNT: ToolAnnotations = {
+export const CREATE_ACCOUNT = {
     title: "Create Account",
     name: "create_account",
     description: "Create a new COTI account with a randomly generated private key and AES key. Returns the new account details for the AI assistant to track in conversation context. The AI should remember these credentials for use in subsequent operations.",

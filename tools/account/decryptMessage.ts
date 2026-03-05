@@ -2,7 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { decrypt, encodeKey } from "@coti-io/coti-sdk-typescript";
 import { z } from "zod";
 
-export const DECRYPT_MESSAGE: ToolAnnotations = {
+export const DECRYPT_MESSAGE = {
     title: "Decrypt Message",
     name: "decrypt_message",
     description:

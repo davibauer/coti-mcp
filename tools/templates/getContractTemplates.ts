@@ -3,7 +3,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { z } from "zod";
 
-export const GET_PRIVATE_ERC20_TEMPLATE: ToolAnnotations = {
+export const GET_PRIVATE_ERC20_TEMPLATE= {
     title: "Get Private ERC20 Template",
     name: "get_private_erc20_template",
     description:
@@ -17,7 +17,7 @@ export const GET_PRIVATE_ERC20_TEMPLATE: ToolAnnotations = {
     inputSchema: {},
 };
 
-export const GET_PRIVATE_ERC721_TEMPLATE: ToolAnnotations = {
+export const GET_PRIVATE_ERC721_TEMPLATE= {
     title: "Get Private ERC721 Template",
     name: "get_private_erc721_template",
     description:
@@ -31,7 +31,7 @@ export const GET_PRIVATE_ERC721_TEMPLATE: ToolAnnotations = {
     inputSchema: {},
 };
 
-export const GET_PRIVATE_MESSAGE_TEMPLATE: ToolAnnotations = {
+export const GET_PRIVATE_MESSAGE_TEMPLATE = {
     title: "Get Private Message Template",
     name: "get_private_message_template",
     description:

@@ -1,0 +1,29 @@
+services:
+  coti-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    image: coti-mcp:latest
+    container_name: coti-mcp-server
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      # Uncomment and set to enable bearer token authentication:
+      # MCP_AUTH_TOKEN: "your-secret-token-here"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -3,7 +3,7 @@ import { getDefaultProvider, Wallet } from '@coti-io/coti-ethers';
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
 
-export const TRANSFER_NATIVE: ToolAnnotations = {
+export const TRANSFER_NATIVE = {
     title: "Transfer Native",
     name: "transfer_native",
     description:

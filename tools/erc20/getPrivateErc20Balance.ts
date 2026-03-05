@@ -4,7 +4,7 @@ import { decryptUint } from '@coti-io/coti-sdk-typescript';
 import { getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const GET_PRIVATE_ERC20_TOKEN_BALANCE: ToolAnnotations = {
+export const GET_PRIVATE_ERC20_TOKEN_BALANCE= {
     title: "Get Private ERC20 Token Balance",
     name: "get_private_erc20_balance",
     description: "Get the balance of a private ERC20 token on the COTI blockchain. This is used for checking the current balance of a private token for a COTI account. Requires a COTI account address and token contract address as input. Returns the decrypted token balance.",

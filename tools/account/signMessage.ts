@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { z } from "zod";
 
-export const SIGN_MESSAGE: ToolAnnotations = {
+export const SIGN_MESSAGE = {
     title: "Sign Message",
     name: "sign_message",
     description:

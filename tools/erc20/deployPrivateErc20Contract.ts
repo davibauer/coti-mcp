@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { ethers, getDefaultProvider, N, Wallet } from "@coti-io/coti-ethers";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const DEPLOY_PRIVATE_ERC20_CONTRACT: ToolAnnotations = {
+export const DEPLOY_PRIVATE_ERC20_CONTRACT= {
     title: "Deploy Private ERC20 Contract",
     name: "deploy_private_erc20_contract",
     description:

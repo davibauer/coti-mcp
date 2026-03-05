@@ -7,7 +7,7 @@ import { z } from "zod";
 /**
  * Tool definition for transferring private ERC20 tokens on the COTI blockchain
  */
-export const TRANSFER_PRIVATE_ERC20_TOKEN: ToolAnnotations = {
+export const TRANSFER_PRIVATE_ERC20_TOKEN= {
     name: "transfer_private_erc20",
     description:
         "Transfer private ERC20 tokens on the COTI blockchain. " +

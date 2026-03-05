@@ -7,7 +7,7 @@ import { z } from "zod";
 /**
  * Tool definition for approving a spender to use ERC20 tokens on the COTI blockchain
  */
-export const APPROVE_ERC20_SPENDER: ToolAnnotations = {
+export const APPROVE_ERC20_SPENDER= {
     title: "Approve ERC20 Spender",
     name: "approve_erc20_spender",
     description:

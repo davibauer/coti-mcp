@@ -4,7 +4,7 @@ import { buildStringInputText } from "@coti-io/coti-sdk-typescript";
 import { ERC721_ABI } from "../constants/abis.js";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-export const MINT_PRIVATE_ERC721_TOKEN: ToolAnnotations = {
+export const MINT_PRIVATE_ERC721_TOKEN= {
     title: "Mint Private ERC721 Token",
     name: "mint_private_erc721_token",
     description:

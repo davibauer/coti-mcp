@@ -4,7 +4,7 @@ import { getDefaultProvider, Wallet, Contract } from "@coti-io/coti-ethers";
 import { buildStringInputText } from "@coti-io/coti-sdk-typescript";
 import { z } from "zod";
 
-export const SEND_PRIVATE_MESSAGE: ToolAnnotations = {
+export const SEND_PRIVATE_MESSAGE = {
     title: "Send Private Message",
     name: "send_private_message",
     description:

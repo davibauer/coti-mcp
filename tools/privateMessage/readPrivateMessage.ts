@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, Contract } from "@coti-io/coti-ethers";
 import { z } from "zod";
 
-export const READ_PRIVATE_MESSAGE: ToolAnnotations = {
+export const READ_PRIVATE_MESSAGE = {
     title: "Read Private Message",
     name: "read_private_message",
     description:

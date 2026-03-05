@@ -39,7 +39,7 @@ contract PrivateMessage {
     }
 }`;
 
-export const DEPLOY_PRIVATE_MESSAGE_CONTRACT: ToolAnnotations = {
+export const DEPLOY_PRIVATE_MESSAGE_CONTRACT = {
     title: "Deploy Private Message Contract",
     name: "deploy_private_message_contract",
     description:

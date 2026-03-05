@@ -2,7 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { ethers } from "ethers";
 import { z } from "zod";
 
-export const VERIFY_SIGNATURE: ToolAnnotations = {
+export const VERIFY_SIGNATURE = {
     title: "Verify Signature",
     name: "verify_signature",
     description:

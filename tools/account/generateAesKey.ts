@@ -3,7 +3,7 @@ import { getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
 
-export const GENERATE_AES_KEY: ToolAnnotations = {
+export const GENERATE_AES_KEY = {
     title: "Generate AES Key",
     name: "generate_aes_key",
     description: "Generate or recover an AES key for a COTI account. Requires the account to be funded. The AI assistant should track the returned AES key for use in private transactions.",

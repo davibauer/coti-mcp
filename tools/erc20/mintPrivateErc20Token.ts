@@ -3,7 +3,7 @@ import { getDefaultProvider, Contract, Wallet } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const MINT_PRIVATE_ERC20_TOKEN: ToolAnnotations = {
+export const MINT_PRIVATE_ERC20_TOKEN= {
     title: "Mint Private ERC20 Token",
     name: "mint_private_erc20_token",
     description:

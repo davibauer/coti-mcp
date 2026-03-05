@@ -5,7 +5,7 @@ import { z } from "zod";
 import { compileSolidity } from "../compiler/solidityCompiler.js";
 import { performVerifyContract } from "../verification/verifyContract.js";
 
-export const COMPILE_AND_DEPLOY_CONTRACT: ToolAnnotations = {
+export const COMPILE_AND_DEPLOY_CONTRACT = {
     title: "Compile and Deploy Contract",
     name: "compile_and_deploy_contract",
     description:
@@ -402,7 +402,7 @@ export async function performCompileAndDeployContract(
             transactionStatus: receipt.status ?? 1,
             blockNumber: receipt.blockNumber,
             gasUsed: receipt.gasUsed.toString(),
-            abi: JSON.stringify(compilationResult.abi, null, 2),
+            abi: JSON.stringify(compilationResult.abi, null, 2) as any,
             deployer: wallet.address,
             network,
             constructorParams: constructor_params,

@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider, Wallet } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const TRANSFER_PRIVATE_ERC721_TOKEN: ToolAnnotations = {
+export const TRANSFER_PRIVATE_ERC721_TOKEN= {
     title: "Transfer Private ERC721 Token",
     name: "transfer_private_erc721",
     description:

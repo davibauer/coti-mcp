@@ -3,7 +3,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getNetwork } from "../shared/account.js";
 import { ERC20_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const GET_PRIVATE_ERC20_DECIMALS: ToolAnnotations = {
+export const GET_PRIVATE_ERC20_DECIMALS= {
     title: "Get Private ERC20 Decimals",
     name: "get_private_erc20_decimals",
     description:

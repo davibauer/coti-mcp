@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { Contract, getDefaultProvider } from "@coti-io/coti-ethers";
 import { ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const GET_PRIVATE_ERC721_APPROVED: ToolAnnotations = {
+export const GET_PRIVATE_ERC721_APPROVED= {
     title: "Get Private ERC721 Approved",
     name: "get_private_erc721_approved",
     description:

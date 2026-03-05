@@ -1,7 +1,7 @@
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-export const GET_CURRENT_NETWORK: ToolAnnotations = {
+export const GET_CURRENT_NETWORK = {
     title: "Get Current Network",
     name: "get_current_network",
     description: "Get the currently configured COTI network (testnet or mainnet). The AI assistant should track and pass the current network context. If no network is provided, defaults to testnet.",

@@ -3,7 +3,7 @@ import { CotiNetwork } from "@coti-io/coti-ethers";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
 
-export const GET_CURRENT_RPC: ToolAnnotations = {
+export const GET_CURRENT_RPC = {
     title: "Get Current RPC",
     name: "get_current_rpc",
     description: "Get the RPC URL for the specified COTI network (testnet or mainnet). Returns the RPC endpoint currently being used for blockchain interactions.",

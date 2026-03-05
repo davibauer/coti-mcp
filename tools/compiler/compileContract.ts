@@ -2,7 +2,7 @@ import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import { compileSolidity } from "./solidityCompiler.js";
 
-export const COMPILE_CONTRACT: ToolAnnotations = {
+export const COMPILE_CONTRACT = {
     title: "Compile Solidity Contract",
     name: "compile_contract",
     description:

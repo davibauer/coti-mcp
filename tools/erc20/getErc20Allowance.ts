@@ -7,7 +7,7 @@ import { z } from "zod";
 /**
  * Tool definition for checking ERC20 token allowance on the COTI blockchain
  */
-export const GET_ERC20_ALLOWANCE: ToolAnnotations = {
+export const GET_ERC20_ALLOWANCE= {
     title: "Get ERC20 Allowance",
     name: "get_erc20_allowance",
     description:

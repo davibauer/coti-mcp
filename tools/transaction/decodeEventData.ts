@@ -3,7 +3,7 @@ import { getNetwork } from "../shared/account.js";
 import { getDefaultProvider, Wallet, ethers } from "@coti-io/coti-ethers";
 import { ERC20_ABI, ERC721_ABI } from "../constants/abis.js";
 import { z } from "zod";
-export const DECODE_EVENT_DATA: ToolAnnotations = {
+export const DECODE_EVENT_DATA = {
     title: "Decode Event Data",
     name: "decode_event_data",
     description: "Decode event data from a transaction log based on the event signature. This helps interpret the raw data in transaction logs by matching the event signature to known event types and decoding the parameters. Requires event signature, topics, and data from a transaction log.",

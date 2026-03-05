@@ -2,7 +2,7 @@ import { ethers, getDefaultProvider } from "@coti-io/coti-ethers";
 import { ToolAnnotations } from "@modelcontextprotocol/sdk/types.js";
 import { getNetwork } from "../shared/account.js";
 import { z } from "zod";
-export const GET_TRANSACTION_STATUS: ToolAnnotations = {
+export const GET_TRANSACTION_STATUS = {
     title: "Get Transaction Status",
     name: "get_transaction_status",
     description:
