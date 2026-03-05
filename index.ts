@@ -50,6 +50,14 @@ import { MINT_PRIVATE_ERC721_TOKEN, mintPrivateERC721TokenHandler } from "./tool
 import { SET_PRIVATE_ERC721_APPROVAL_FOR_ALL, setPrivateERC721ApprovalForAllHandler } from "./tools/erc721/setPrivateErc721ApprovalForAll.js";
 import { TRANSFER_PRIVATE_ERC721_TOKEN, transferPrivateERC721TokenHandler } from "./tools/erc721/transferPrivateErc721.js";
 
+// Private Message Tools
+
+import { DEPLOY_PRIVATE_MESSAGE_CONTRACT, deployPrivateMessageContractHandler } from "./tools/privateMessage/deployPrivateMessageContract.js";
+import { SEND_PRIVATE_MESSAGE, sendPrivateMessageHandler } from "./tools/privateMessage/sendPrivateMessage.js";
+import { READ_PRIVATE_MESSAGE, readPrivateMessageHandler } from "./tools/privateMessage/readPrivateMessage.js";
+import { GET_PRIVATE_MESSAGE_COUNT, getPrivateMessageCountHandler } from "./tools/privateMessage/getPrivateMessageCount.js";
+import { GET_PRIVATE_MESSAGE_SENDERS, getPrivateMessageSendersHandler } from "./tools/privateMessage/getPrivateMessageSenders.js";
+
 // Native Tools
 
 import { GET_NATIVE_BALANCE, getNativeBalanceHandler } from "./tools/native/getNativeBalance.js";
@@ -285,6 +293,33 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
   server.registerTool("get_transaction_logs",
     GET_TRANSACTION_LOGS,
     getTransactionLogsHandler
+  );
+
+  // Private Message Tools
+
+  server.registerTool("deploy_private_message_contract",
+    DEPLOY_PRIVATE_MESSAGE_CONTRACT,
+    deployPrivateMessageContractHandler
+  );
+
+  server.registerTool("send_private_message",
+    SEND_PRIVATE_MESSAGE,
+    sendPrivateMessageHandler
+  );
+
+  server.registerTool("read_private_message",
+    READ_PRIVATE_MESSAGE,
+    readPrivateMessageHandler
+  );
+
+  server.registerTool("get_private_message_count",
+    GET_PRIVATE_MESSAGE_COUNT,
+    getPrivateMessageCountHandler
+  );
+
+  server.registerTool("get_private_message_senders",
+    GET_PRIVATE_MESSAGE_SENDERS,
+    getPrivateMessageSendersHandler
   );
 
   // Native
