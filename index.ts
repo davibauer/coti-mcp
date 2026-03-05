@@ -8,6 +8,8 @@ import { z } from "zod";
 import { CREATE_ACCOUNT, createAccountHandler } from './tools/account/createAccount.js';
 import { ENCRYPT_VALUE, encryptValueHandler } from "./tools/account/encryptValue.js";
 import { DECRYPT_VALUE, decryptValueHandler } from "./tools/account/decryptValue.js";
+import { ENCRYPT_MESSAGE, encryptMessageHandler } from "./tools/account/encryptMessage.js";
+import { DECRYPT_MESSAGE, decryptMessageHandler } from "./tools/account/decryptMessage.js";
 import { GENERATE_AES_KEY, generateAesKeyHandler } from "./tools/account/generateAesKey.js";
 import { GET_CURRENT_NETWORK, getCurrentNetworkHandler } from './tools/account/getCurrentNetwork.js';
 import { GET_CURRENT_RPC, getCurrentRpcHandler } from './tools/account/getCurrentRpc.js';
@@ -82,6 +84,11 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
     decryptValueHandler
   );
 
+  server.registerTool("decrypt_message",
+    DECRYPT_MESSAGE,
+    decryptMessageHandler
+  );
+
   server.registerTool("get_current_network",
     GET_CURRENT_NETWORK,
     getCurrentNetworkHandler
@@ -95,6 +102,11 @@ export default function ({ config }: { config: z.infer<typeof configSchema> }) {
   server.registerTool("encrypt_value",
     ENCRYPT_VALUE,
     encryptValueHandler
+  );
+
+  server.registerTool("encrypt_message",
+    ENCRYPT_MESSAGE,
+    encryptMessageHandler
   );
 
   server.registerTool("generate_aes_key",
